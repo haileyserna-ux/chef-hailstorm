@@ -336,6 +336,9 @@
     <button class="nav-item" onclick="nav('healthify')" id="nav-healthify">
       <span class="nav-icon">⚡</span> Healthify URL
     </button>
+    <button class="nav-item" onclick="nav('mfp')" id="nav-mfp">
+      <span class="nav-icon">📊</span> Log to MFP
+    </button>
 
     <span class="nav-label">My kitchen</span>
     <button class="nav-item" onclick="nav('recipes')" id="nav-recipes">
@@ -394,14 +397,15 @@
       </div>
 
       <div id="weekly-recipes"></div>
+    </div>
 
-      <div id="mfp-section" style="display:none">
-        <div class="card" style="border-color:rgba(29,158,117,0.3)">
-          <div class="card-title">Log to MyFitnessPal</div>
-          <p style="font-size:13px; color:var(--text2); margin-bottom:1rem">Tap any recipe to open MFP pre-searched — add it as a meal for the day you cook it.</p>
-          <div id="mfp-links"></div>
-        </div>
+    <!-- ══ LOG TO MFP ══ -->
+    <div class="page" id="page-mfp">
+      <div class="page-header">
+        <h1 class="page-title">Log to MyFitnessPal</h1>
+        <p class="page-sub">Tap any recipe to open MFP pre-searched — add it as a meal for the day you cook it</p>
       </div>
+      <div id="mfp-page-content"></div>
     </div>
 
     <!-- ══ HEALTHIFY ══ -->
@@ -652,6 +656,7 @@ function nav(page) {
   if (page === 'recipes') renderRecipeBook();
   if (page === 'shopping') renderShoppingList();
   if (page === 'pantry') renderPantry();
+  if (page === 'mfp') renderMFPPage();
   if (page === 'apikey') {
     document.getElementById('apikey-field').value = state.apiKey ? '••••••••' + state.apiKey.slice(-6) : '';
     document.getElementById('key-status-box').textContent = state.apiKey ? '✓ API key saved. Recipe generation is active.' : 'No key saved yet.';
@@ -699,7 +704,7 @@ async function callClaude(systemPrompt, userMsg) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, system: systemPrompt, messages: [{ role: 'user', content: userMsg }] })
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: systemPrompt, messages: [{ role: 'user', content: userMsg }] })
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API error'); }
   const data = await res.json();
@@ -728,7 +733,6 @@ async function generateRecipes() {
   btn.disabled = true;
   loading.style.display = 'block';
   document.getElementById('weekly-recipes').innerHTML = '';
-  document.getElementById('mfp-section').style.display = 'none';
 
   const interval = setInterval(() => {
     mi = (mi + 1) % msgs.length;
@@ -797,18 +801,30 @@ function renderWeeklyRecipes(recipes) {
   });
   document.getElementById('weekly-recipes').innerHTML = '';
   document.getElementById('weekly-recipes').appendChild(grid);
-  renderMFPLinks(recipes);
+  renderMFPPage();
 }
 
-function renderMFPLinks(recipes) {
-  const section = document.getElementById('mfp-section');
-  const container = document.getElementById('mfp-links');
-  container.innerHTML = recipes.map(r => `
-    <a class="mfp-link" href="https://www.myfitnesspal.com/food/search?search=${encodeURIComponent(r.name)}" target="_blank" rel="noopener">
-      <div><div class="mfp-name">${r.emoji} ${r.name}</div><div class="mfp-macro">${r.kcal} · ${r.protein}</div></div>
-      <span class="mfp-arrow">Log ↗</span>
-    </a>`).join('');
-  section.style.display = 'block';
+function renderMFPPage() {
+  const container = document.getElementById('mfp-page-content');
+  if (!container) return;
+  const recipes = state.weeklyRecipes || [];
+  if (!recipes.length) {
+    container.innerHTML = '<div class="empty"><span class="empty-icon">📊</span><div class="empty-text">No recipes generated yet.<br>Head to <strong>This week</strong> and generate your 4 recipes — they\'ll show up here ready to log.</div></div>';
+    return;
+  }
+  container.innerHTML = `
+    <div class="card" style="border-color:rgba(29,158,117,0.3)">
+      <div class="card-title">This week's recipes</div>
+      <p style="font-size:13px; color:var(--text2); margin-bottom:1rem">Each button opens MyFitnessPal pre-searched for that recipe name.</p>
+      ${recipes.map((r, i) => `
+        <div class="mfp-link" style="cursor:default">
+          <div>
+            <div class="mfp-name">${r.emoji||'🍽️'} ${r.name}</div>
+            <div class="mfp-macro">${DAYS[i]||'Day '+(i+1)} · ${r.kcal||''}${r.protein?' · '+r.protein:''}</div>
+          </div>
+          <button class="btn btn-teal btn-sm" onclick="logToMFP('${r.name.replace(/'/g,"\\'")}')">Log to MFP ↗</button>
+        </div>`).join('')}
+    </div>`;
 }
 
 // ══ RATING ══
