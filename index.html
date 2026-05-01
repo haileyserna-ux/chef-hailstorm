@@ -264,6 +264,75 @@
   .recipe-card-clickable:hover .recipe-name { color: var(--purple-dark); }
   .recipe-view-link { font-size: 12px; color: var(--purple); font-weight: 500; margin-top: 4px; display: inline-block; }
 
+  /* ── DEDICATED RECIPE PAGE (opens in new tab via ?recipe=id) ── */
+  body.recipe-page-mode .sidebar { display: none; }
+  body.recipe-page-mode .main { max-width: 760px; margin: 0 auto; padding: 2.5rem 2rem; }
+  .rp-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); text-decoration: none; margin-bottom: 1.5rem; }
+  .rp-back:hover { color: var(--purple); }
+  .rp-band { height: 8px; border-radius: 4px; margin-bottom: 1.5rem; }
+  .rp-emoji { font-size: 56px; line-height: 1; margin-bottom: 8px; }
+  .rp-cuisine { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .rp-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 32px; font-weight: 700; color: var(--text); line-height: 1.2; margin-bottom: 8px; }
+  .rp-desc { font-size: 16px; color: var(--text2); line-height: 1.6; margin-bottom: 1.25rem; }
+  .rp-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.5rem; }
+  .rp-meta .pill { font-size: 13px; padding: 5px 12px; }
+  .rp-section-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 600; color: var(--text); margin: 1.75rem 0 0.75rem; }
+  .rp-healthy { background: var(--teal-light); border-left: 3px solid var(--teal); border-radius: var(--radius-sm); padding: 14px 18px; margin: 1rem 0 1.5rem; }
+  .rp-healthy-label { font-size: 12px; font-weight: 600; color: var(--teal-dark); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .rp-healthy-text { font-size: 14px; color: var(--text); line-height: 1.6; }
+
+  /* Servings adjuster */
+  .rp-servings { display: flex; align-items: center; gap: 14px; background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .rp-servings-label { font-size: 13px; color: var(--text2); flex: 1; }
+  .rp-svc-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border-md); background: var(--surface); cursor: pointer; font-size: 18px; line-height: 1; color: var(--text); transition: all 0.12s; display: flex; align-items: center; justify-content: center; }
+  .rp-svc-btn:hover { background: var(--purple-light); border-color: var(--purple); color: var(--purple-dark); }
+  .rp-svc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .rp-svc-num { font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; color: var(--text); min-width: 28px; text-align: center; }
+  .rp-svc-reset { font-size: 12px; color: var(--purple); cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
+  .rp-svc-reset:hover { text-decoration: underline; }
+
+  /* Ingredients with swap UI */
+  .rp-ing { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .rp-ing:last-of-type { border-bottom: none; }
+  .rp-ing-name { font-size: 14px; color: var(--text); flex: 1; min-width: 200px; }
+  .rp-ing-name.swapped { color: var(--purple-dark); font-weight: 500; }
+  .rp-ing-name .was { font-size: 11px; color: var(--text3); text-decoration: line-through; margin-right: 6px; font-weight: 400; }
+  .rp-ing-swap { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text2); cursor: pointer; font-family: inherit; transition: all 0.12s; }
+  .rp-ing-swap:hover { background: var(--purple-light); border-color: var(--purple); color: var(--purple-dark); }
+  .rp-ing-swap.active { background: var(--purple); color: white; border-color: var(--purple); }
+  .rp-swap-panel { width: 100%; background: var(--surface2); border-radius: var(--radius-sm); padding: 12px; margin-top: 6px; }
+  .rp-swap-panel-label { font-size: 12px; color: var(--text3); margin-bottom: 8px; }
+  .rp-swap-options { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .rp-swap-opt { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-md); background: var(--surface); font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.12s; }
+  .rp-swap-opt:hover { background: var(--purple-light); border-color: var(--purple); color: var(--purple-dark); }
+  .rp-swap-custom { display: flex; gap: 6px; margin-top: 6px; }
+  .rp-swap-custom input { flex: 1; }
+  .rp-swap-loading { font-size: 12px; color: var(--text3); font-style: italic; padding: 4px 0; }
+
+  /* Steps on detail page */
+  .rp-steps { padding-left: 0; margin: 0; counter-reset: step; list-style: none; }
+  .rp-steps li { position: relative; padding: 12px 0 12px 44px; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--text); line-height: 1.65; counter-increment: step; }
+  .rp-steps li:last-child { border-bottom: none; }
+  .rp-steps li::before { content: counter(step); position: absolute; left: 0; top: 12px; width: 30px; height: 30px; border-radius: 50%; background: var(--purple-light); color: var(--purple-dark); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; }
+
+  /* Sources */
+  .rp-source { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface2); border-radius: var(--radius-sm); margin-bottom: 6px; text-decoration: none; transition: opacity 0.12s; gap: 10px; }
+  .rp-source:hover { opacity: 0.8; }
+  .rp-source-title { font-size: 13px; color: var(--text); font-weight: 500; }
+  .rp-source-url { font-size: 11px; color: var(--text3); margin-top: 2px; word-break: break-all; }
+  .rp-source-arrow { font-size: 13px; color: var(--purple); flex-shrink: 0; }
+  .rp-source-note { font-size: 11px; color: var(--text3); font-style: italic; margin-top: 8px; }
+
+  /* Action bar */
+  .rp-actions { display: flex; gap: 8px; margin-top: 2rem; flex-wrap: wrap; }
+  .rp-actions .btn { flex: 1; min-width: 160px; justify-content: center; }
+
+  /* Recipe swap on weekly card */
+  .recipe-swap-panel { background: var(--surface2); border-radius: var(--radius-sm); padding: 10px; margin-top: 8px; }
+  .recipe-swap-panel textarea { font-size: 12px; padding: 6px 8px; min-height: 50px; }
+  .recipe-swap-panel-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .recipe-swap-panel-actions button { flex: 1; }
+
   /* ── MFP ── */
   .mfp-link { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid rgba(29,158,117,0.3); border-radius: var(--radius-sm); padding: 10px 14px; text-decoration: none; margin-bottom: 8px; transition: opacity 0.12s; }
   .mfp-link:hover { opacity: 0.8; }
@@ -593,6 +662,11 @@
       </div>
     </div>
 
+    <!-- ══ RECIPE DETAIL PAGE (only shown via ?recipe=ID) ══ -->
+    <div class="page" id="page-recipe">
+      <div id="recipe-page-content"></div>
+    </div>
+
     <!-- ══ API KEY ══ -->
     <div class="page" id="page-apikey">
       <div class="page-header">
@@ -621,10 +695,6 @@
 </div>
 
 <div class="toast" id="toast"></div>
-
-<div class="modal-overlay" id="recipe-modal" onclick="if(event.target===this)closeRecipeDetail()">
-  <div class="modal-card" id="recipe-modal-card"></div>
-</div>
 
 <script>
 // ══ STATE ══
@@ -701,14 +771,26 @@ function persist(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
 // ══ INIT ══
 load();
 updateApiStatus();
-renderPantry();
-renderShoppingList();
-renderRecipeBook();
-setWeekLabel();
-if (state.weeklyRecipes.length) renderWeeklyRecipes(state.weeklyRecipes);
 
-if (!state.apiKey) {
-  document.getElementById('setup-overlay').style.display = 'block';
+// Recipe detail page route — opens in new tab via ?recipe=ID
+const urlParams = new URLSearchParams(window.location.search);
+const recipeIdParam = urlParams.get('recipe');
+if (recipeIdParam) {
+  document.body.classList.add('recipe-page-mode');
+  // Hide setup overlay logic on recipe page
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-recipe').classList.add('active');
+  renderRecipePage(recipeIdParam);
+} else {
+  renderPantry();
+  renderShoppingList();
+  renderRecipeBook();
+  setWeekLabel();
+  if (state.weeklyRecipes.length) renderWeeklyRecipes(state.weeklyRecipes);
+
+  if (!state.apiKey) {
+    document.getElementById('setup-overlay').style.display = 'block';
+  }
 }
 
 function setWeekLabel() {
@@ -816,8 +898,8 @@ async function generateRecipes() {
   const pantryCtx = state.pantry.slice(0, 12).join(', ');
 
   const system = `You are Chef Hailstorm, a personal recipe assistant. Return ONLY a raw JSON array, no markdown, no explanation.
-Each item: {"emoji":"","name":"","description":"one sentence","kcal":"~XXX kcal","protein":"~XXg protein","time":"XX min","servings":"X","tags":["tag1","tag2"],"cuisine":"CuisineName","ingredients":["item (qty)","item (qty)"],"instructions":["Step 1 sentence.","Step 2 sentence.","..."]}
-Make recipes varied, genuinely delicious, and realistic for home cooking. Instructions should be 5-8 numbered steps, clear and concise — written like a friendly chef walking through it.`;
+Each item: {"emoji":"","name":"","description":"one sentence","kcal":"~XXX kcal","protein":"~XXg protein","time":"XX min","servings":"X","tags":["tag1","tag2"],"cuisine":"CuisineName","ingredients":["item (qty)","item (qty)"],"instructions":["Step 1 sentence.","Step 2 sentence.","..."],"whyHealthy":"One short paragraph (2-3 sentences) explaining specifically how this recipe supports the user's stated goals — reference their calorie target, protein priority, or restrictions when relevant.","sources":[{"title":"Source recipe title","url":"https://example.com/recipe"},{"title":"Another reference","url":"https://example.com/other"}]}
+Make recipes varied, genuinely delicious, and realistic for home cooking. Instructions should be 5-8 numbered steps, clear and concise — written like a friendly chef walking through it. For "sources", include 2-3 real recipes from popular sites (allrecipes.com, seriouseats.com, bonappetit.com, nytcooking.com, foodnetwork.com, eatingwell.com, etc.) that inspired your recipe — give your best plausible URL for each.`;
 
   const userMsg = `Generate 4 dinner recipes.
 Goals: ${state.goals.goal}, high protein ${state.goals.protein}, ~${state.goals.calories} kcal/day, ~${Math.round(state.goals.calories * 0.28)}-${Math.round(state.goals.calories * 0.32)} kcal per dinner, max ${state.goals.maxTime} min, ${state.goals.difficulty}.
@@ -829,6 +911,7 @@ ${ratingCtx ? 'Past ratings to factor in: ' + ratingCtx : ''}`;
     const raw = await callClaude(system, userMsg);
     const clean = raw.replace(/```json|```/g, '').trim();
     const recipes = JSON.parse(clean);
+    recipes.forEach(r => { if (!r.id) r.id = 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7); });
     state.weeklyRecipes = recipes;
     persist(KEYS.weeklyRecipes, recipes);
     clearInterval(interval);
@@ -851,8 +934,8 @@ function renderWeeklyRecipes(recipes) {
     const card = document.createElement('div');
     card.className = 'recipe-card recipe-card-clickable' + (rated ? ' made' : '');
     card.onclick = (ev) => {
-      if (ev.target.closest('button, .rating-form, textarea')) return;
-      openRecipeDetail(i);
+      if (ev.target.closest('button, textarea, input, .recipe-swap-panel')) return;
+      openRecipeInNewTab(i);
     };
     card.innerHTML = `
       <div class="recipe-band" style="background:${COLORS[i%COLORS.length]}"></div>
@@ -864,11 +947,13 @@ function renderWeeklyRecipes(recipes) {
         <div class="recipe-desc">${r.description}</div>
         <div class="recipe-pills">${(r.tags||[]).map((t,ti) => `<span class="pill ${PILL_CLS[ti%PILL_CLS.length]}">${t}</span>`).join('')}</div>
         <div class="recipe-macros">${r.kcal} · ${r.protein} · ${r.time}</div>
-        <span class="recipe-view-link">View full recipe →</span>
+        <span class="recipe-view-link">View full recipe ↗</span>
         <div class="recipe-btns" style="margin-top:8px">
           <button class="recipe-btn primary" onclick="event.stopPropagation();saveToBook(${i})">Save ↗</button>
           <button class="recipe-btn green" onclick="event.stopPropagation();openRatingForm('${r.name.replace(/'/g,"\\'")}', ${i})">${rated ? 'Edit rating' : '✓ Made it'}</button>
+          <button class="recipe-btn" onclick="event.stopPropagation();toggleRecipeSwap(${i})" id="swap-btn-${i}" title="Swap this recipe">🔄 Swap</button>
         </div>
+        <div id="swap-panel-${i}"></div>
         <div id="rating-form-${i}"></div>
       </div>`;
     grid.appendChild(card);
@@ -878,54 +963,296 @@ function renderWeeklyRecipes(recipes) {
   renderMFPPage();
 }
 
-function openRecipeDetail(idx) {
+function openRecipeInNewTab(idx) {
   const r = state.weeklyRecipes[idx];
   if (!r) return;
-  const card = document.getElementById('recipe-modal-card');
-  const ingredients = (r.ingredients || []).map(i => `<li>${i}</li>`).join('');
-  const instructions = (r.instructions || []).map(s => `<li>${s}</li>`).join('');
-  const noInstructions = !r.instructions || !r.instructions.length;
-  card.innerHTML = `
-    <div class="modal-band" style="background:${COLORS[idx%COLORS.length]}"></div>
-    <button class="modal-close" onclick="closeRecipeDetail()" aria-label="Close">×</button>
-    <div class="modal-body">
-      <div class="modal-emoji">${r.emoji||'🍽️'}</div>
-      <div class="modal-cuisine">${DAYS[idx]||'Day '+(idx+1)} · ${r.cuisine||''}</div>
-      <h2 class="modal-title">${r.name}</h2>
-      <p class="modal-desc">${r.description||''}</p>
-      <div class="modal-meta">
-        <span class="pill pill-purple">${r.kcal||''}</span>
-        <span class="pill pill-teal">${r.protein||''}</span>
-        <span class="pill pill-amber">⏱ ${r.time||''}</span>
-        ${r.servings ? `<span class="pill pill-pink">${r.servings} servings</span>` : ''}
-      </div>
-      ${ingredients ? `
-        <div class="modal-section-title">Ingredients</div>
-        <ul class="modal-ingredients">${ingredients}</ul>` : ''}
-      ${noInstructions ? `
-        <div class="modal-section-title">Instructions</div>
-        <p style="font-size:13px; color:var(--text3); font-style:italic">No step-by-step instructions for this recipe yet — try regenerating to get them.</p>
-      ` : `
-        <div class="modal-section-title">Instructions</div>
-        <ol class="modal-steps">${instructions}</ol>`}
-      <div class="modal-actions">
-        <button class="btn btn-teal" onclick="logToMFP('${r.name.replace(/'/g,"\\'")}')">Log to MFP ↗</button>
-        <button class="btn btn-primary" onclick="saveToBook(${idx})">Save to recipe book</button>
-        <button class="btn btn-outline" onclick="closeRecipeDetail()">Close</button>
+  if (!r.id) {
+    r.id = 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+    persist(KEYS.weeklyRecipes, state.weeklyRecipes);
+  }
+  window.open(window.location.pathname + '?recipe=' + encodeURIComponent(r.id), '_blank');
+}
+
+// ══ SWAP A WHOLE RECIPE (weekly card) ══
+function toggleRecipeSwap(idx) {
+  const panel = document.getElementById('swap-panel-' + idx);
+  if (!panel) return;
+  if (panel.innerHTML) { panel.innerHTML = ''; return; }
+  panel.innerHTML = `
+    <div class="recipe-swap-panel">
+      <textarea id="swap-reason-${idx}" placeholder="Optional: why are you swapping? (e.g., 'too spicy', 'no fish')"></textarea>
+      <div class="recipe-swap-panel-actions">
+        <button class="recipe-btn" onclick="event.stopPropagation();document.getElementById('swap-panel-${idx}').innerHTML=''">Cancel</button>
+        <button class="recipe-btn primary" onclick="event.stopPropagation();executeRecipeSwap(${idx})">Generate new</button>
       </div>
     </div>`;
-  document.getElementById('recipe-modal').classList.add('show');
-  document.body.style.overflow = 'hidden';
 }
 
-function closeRecipeDetail() {
-  document.getElementById('recipe-modal').classList.remove('show');
-  document.body.style.overflow = '';
+async function executeRecipeSwap(idx) {
+  const reason = (document.getElementById('swap-reason-' + idx)?.value || '').trim();
+  const panel = document.getElementById('swap-panel-' + idx);
+  if (panel) panel.innerHTML = '<div class="recipe-swap-panel"><div class="rp-swap-loading">Generating a new recipe...</div></div>';
+  const cuisines = getSelectedCuisines();
+  const existingNames = state.weeklyRecipes.filter((_, i) => i !== idx).map(r => r.name).join(', ');
+  const ratingCtx = Object.values(state.ratings).map(r => `"${r.name}": ${r.stars} stars`).join('; ');
+  const pantryCtx = state.pantry.slice(0, 12).join(', ');
+  const sys = `You are Chef Hailstorm. Return ONLY a raw JSON object (NOT an array) — a single dinner recipe replacing one in the user's weekly plan.
+Schema: {"emoji":"","name":"","description":"one sentence","kcal":"~XXX kcal","protein":"~XXg protein","time":"XX min","servings":"X","tags":["tag1","tag2"],"cuisine":"CuisineName","ingredients":["item (qty)","item (qty)"],"instructions":["Step 1","Step 2","..."],"whyHealthy":"One short paragraph on how this fits the user's goals.","sources":[{"title":"","url":"https://..."}]}
+Instructions should be 5-8 steps. Sources: 2-3 plausible URLs from popular recipe sites.`;
+  const usr = `Replace one recipe in this week's plan with a new dinner recipe.
+Goals: ${state.goals.goal}, high protein ${state.goals.protein}, ~${state.goals.calories} kcal/day, ~${Math.round(state.goals.calories * 0.28)}-${Math.round(state.goals.calories * 0.32)} kcal per dinner, max ${state.goals.maxTime} min, ${state.goals.difficulty}.
+Cuisines this week: ${cuisines.join(', ') || 'any'}.
+Other recipes in the week (don't duplicate these): ${existingNames}.
+Pantry: ${pantryCtx}.
+${reason ? 'IMPORTANT — user wants this swap because: ' + reason + '. Avoid that issue in the new recipe.' : ''}
+${ratingCtx ? 'Past ratings to factor in: ' + ratingCtx : ''}`;
+  try {
+    const raw = await callClaude(sys, usr);
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const newRecipe = JSON.parse(clean);
+    newRecipe.id = 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+    state.weeklyRecipes[idx] = newRecipe;
+    persist(KEYS.weeklyRecipes, state.weeklyRecipes);
+    renderWeeklyRecipes(state.weeklyRecipes);
+    buildShoppingFromRecipes(state.weeklyRecipes);
+    showToast('Recipe swapped ✓');
+  } catch(e) {
+    if (panel) panel.innerHTML = `<div class="recipe-swap-panel" style="color:var(--coral); font-size:12px">Swap failed: ${e.message}</div>`;
+  }
 }
 
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeRecipeDetail();
-});
+// ══ RECIPE DETAIL PAGE (new tab via ?recipe=id) ══
+let currentRecipe = null;
+let currentRecipeBaseServings = 4;
+let currentRecipeServings = 4;
+let originalIngredients = [];
+let recipeIndexInWeekly = -1;
+
+function findRecipeById(id) {
+  let idx = state.weeklyRecipes.findIndex(r => r.id === id);
+  if (idx >= 0) return { recipe: state.weeklyRecipes[idx], idx, source: 'weekly' };
+  idx = state.recipes.findIndex(r => r.id === id);
+  if (idx >= 0) return { recipe: state.recipes[idx], idx, source: 'book' };
+  return null;
+}
+
+function renderRecipePage(id) {
+  const found = findRecipeById(id);
+  const container = document.getElementById('recipe-page-content');
+  if (!found) {
+    container.innerHTML = `
+      <div class="empty">
+        <span class="empty-icon">🤷</span>
+        <div class="empty-text">Recipe not found.<br>It may have been swapped or cleared.<br><br>
+        <a href="${window.location.pathname}" style="color:var(--purple)">← Back to Chef Hailstorm</a></div>
+      </div>`;
+    return;
+  }
+  currentRecipe = found.recipe;
+  recipeIndexInWeekly = found.source === 'weekly' ? found.idx : -1;
+  const baseServ = parseInt(currentRecipe.servings) || 4;
+  currentRecipeBaseServings = baseServ;
+  currentRecipeServings = baseServ;
+  originalIngredients = [...(currentRecipe.ingredients || [])];
+  document.title = (currentRecipe.emoji||'🍽️') + ' ' + currentRecipe.name + ' · Chef Hailstorm';
+  paintRecipePage();
+}
+
+function paintRecipePage() {
+  const r = currentRecipe;
+  const container = document.getElementById('recipe-page-content');
+  const idx = recipeIndexInWeekly >= 0 ? recipeIndexInWeekly : 0;
+  const factor = currentRecipeServings / currentRecipeBaseServings;
+  const scaledIngredients = (r.ingredients||[]).map(scaleIngredient.bind(null, factor));
+  const ingredientsHTML = scaledIngredients.map((ing, i) => {
+    const wasSwapped = originalIngredients[i] && originalIngredients[i] !== r.ingredients[i];
+    return `
+      <div class="rp-ing" id="ing-row-${i}">
+        <div class="rp-ing-name${wasSwapped?' swapped':''}">
+          ${wasSwapped ? `<span class="was">${originalIngredients[i]}</span>` : ''}${ing}
+        </div>
+        <button class="rp-ing-swap" id="ing-swap-btn-${i}" onclick="toggleIngredientSwap(${i})">🔄 Swap</button>
+        <div id="ing-swap-panel-${i}" style="width:100%"></div>
+      </div>`;
+  }).join('');
+  const instructionsHTML = (r.instructions||[]).map(s => `<li>${s}</li>`).join('');
+  const sourcesHTML = (r.sources||[]).map(s => `
+    <a class="rp-source" href="${s.url}" target="_blank" rel="noopener">
+      <div>
+        <div class="rp-source-title">${s.title||s.url}</div>
+        <div class="rp-source-url">${s.url}</div>
+      </div>
+      <span class="rp-source-arrow">↗</span>
+    </a>`).join('');
+  container.innerHTML = `
+    <a href="${window.location.pathname}" class="rp-back">← Back to Chef Hailstorm</a>
+    <div class="rp-band" style="background:${COLORS[idx%COLORS.length]}"></div>
+    <div class="rp-emoji">${r.emoji||'🍽️'}</div>
+    <div class="rp-cuisine">${r.cuisine||'Recipe'}</div>
+    <h1 class="rp-title">${r.name}</h1>
+    <p class="rp-desc">${r.description||''}</p>
+    <div class="rp-meta">
+      <span class="pill pill-purple">${r.kcal||''} / serving</span>
+      <span class="pill pill-teal">${r.protein||''}</span>
+      <span class="pill pill-amber">⏱ ${r.time||''}</span>
+    </div>
+    ${r.whyHealthy ? `
+      <div class="rp-healthy">
+        <div class="rp-healthy-label">⛈️ Why this fits your goals</div>
+        <div class="rp-healthy-text">${r.whyHealthy}</div>
+      </div>` : ''}
+
+    <div class="rp-section-title">Servings</div>
+    <div class="rp-servings">
+      <button class="rp-svc-btn" onclick="changeServings(-1)" ${currentRecipeServings<=1?'disabled':''}>−</button>
+      <span class="rp-svc-num">${currentRecipeServings}</span>
+      <button class="rp-svc-btn" onclick="changeServings(1)">+</button>
+      <span class="rp-servings-label">${currentRecipeServings === currentRecipeBaseServings ? `Recipe makes ${currentRecipeBaseServings}` : `Scaled from ${currentRecipeBaseServings} (×${factor.toFixed(2).replace(/\\.?0+$/, '')})`}</span>
+      ${currentRecipeServings !== currentRecipeBaseServings ? `<button class="rp-svc-reset" onclick="resetServings()">Reset</button>` : ''}
+    </div>
+
+    <div class="rp-section-title">Ingredients</div>
+    <div>${ingredientsHTML || '<p style="color:var(--text3);font-size:13px">No ingredients listed.</p>'}</div>
+
+    <div class="rp-section-title">Instructions</div>
+    ${instructionsHTML ? `<ol class="rp-steps">${instructionsHTML}</ol>` : '<p style="color:var(--text3);font-size:13px;font-style:italic">No instructions for this recipe — try regenerating.</p>'}
+
+    ${sourcesHTML ? `
+      <div class="rp-section-title">Reference recipes</div>
+      <div>${sourcesHTML}</div>
+      <div class="rp-source-note">Note: these are recipes Chef Hailstorm referenced — URLs are AI-suggested and may occasionally be inaccurate.</div>
+    ` : ''}
+
+    <div class="rp-actions">
+      <button class="btn btn-teal" onclick="logToMFP('${r.name.replace(/'/g,"\\'")}')">Log to MyFitnessPal ↗</button>
+      <button class="btn btn-primary" onclick="saveCurrentRecipeToBook()">Save to recipe book</button>
+    </div>`;
+}
+
+// Servings scaling
+function scaleIngredient(factor, str) {
+  if (factor === 1) return str;
+  return str.replace(/^(\s*)((?:\d+\s+\d+\/\d+)|(?:\d+\/\d+)|(?:\d+(?:\.\d+)?))/, (match, ws, num) => {
+    let val;
+    if (num.includes(' ')) {
+      // mixed: "1 1/2"
+      const [whole, frac] = num.split(' ');
+      const [n, d] = frac.split('/');
+      val = parseInt(whole) + parseInt(n)/parseInt(d);
+    } else if (num.includes('/')) {
+      const [n, d] = num.split('/');
+      val = parseInt(n)/parseInt(d);
+    } else {
+      val = parseFloat(num);
+    }
+    const scaled = val * factor;
+    return ws + formatQuantity(scaled);
+  });
+}
+
+function formatQuantity(n) {
+  if (n >= 10) return Math.round(n).toString();
+  // try to render as a clean fraction for common values
+  const fracs = [[0.25,'1/4'],[0.333,'1/3'],[0.5,'1/2'],[0.667,'2/3'],[0.75,'3/4']];
+  const whole = Math.floor(n);
+  const remainder = n - whole;
+  if (remainder < 0.05) return whole.toString();
+  for (const [val, str] of fracs) {
+    if (Math.abs(remainder - val) < 0.05) return whole === 0 ? str : whole + ' ' + str;
+  }
+  return n.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function changeServings(delta) {
+  const next = currentRecipeServings + delta;
+  if (next < 1 || next > 24) return;
+  currentRecipeServings = next;
+  paintRecipePage();
+}
+
+function resetServings() {
+  currentRecipeServings = currentRecipeBaseServings;
+  paintRecipePage();
+}
+
+// Ingredient swap
+function toggleIngredientSwap(ingIdx) {
+  const panel = document.getElementById('ing-swap-panel-' + ingIdx);
+  const btn = document.getElementById('ing-swap-btn-' + ingIdx);
+  if (panel.innerHTML) {
+    panel.innerHTML = '';
+    btn.classList.remove('active');
+    return;
+  }
+  document.querySelectorAll('[id^="ing-swap-panel-"]').forEach(p => p.innerHTML = '');
+  document.querySelectorAll('.rp-ing-swap').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  panel.innerHTML = `
+    <div class="rp-swap-panel">
+      <div class="rp-swap-loading" id="ing-swap-status-${ingIdx}">Asking Chef Hailstorm for alternatives...</div>
+      <div class="rp-swap-options" id="ing-swap-options-${ingIdx}"></div>
+      <div class="rp-swap-custom">
+        <input type="text" id="ing-swap-input-${ingIdx}" placeholder="Or type your own (e.g. ground chicken)" onkeydown="if(event.key==='Enter')applyIngredientSwap(${ingIdx}, document.getElementById('ing-swap-input-${ingIdx}').value)">
+        <button class="btn btn-primary btn-sm" onclick="applyIngredientSwap(${ingIdx}, document.getElementById('ing-swap-input-${ingIdx}').value)">Use this</button>
+      </div>
+    </div>`;
+  loadIngredientAlternatives(ingIdx);
+}
+
+async function loadIngredientAlternatives(ingIdx) {
+  const r = currentRecipe;
+  const ing = r.ingredients[ingIdx];
+  const statusEl = document.getElementById('ing-swap-status-' + ingIdx);
+  const optsEl = document.getElementById('ing-swap-options-' + ingIdx);
+  try {
+    const sys = `You are Chef Hailstorm. Return ONLY a raw JSON array of 4 strings — alternative ingredients that could replace the given one in the recipe, keeping similar role (protein, veggie, starch, etc) and supporting the user's high-protein/calorie-deficit goals where reasonable. Example: ["ground chicken","chicken thighs","turkey breast","extra-firm tofu"]. Just the ingredient name, no quantities.`;
+    const usr = `Recipe: ${r.name}\nIngredient to swap: ${ing}\nGive 4 swap suggestions.`;
+    const raw = await callClaude(sys, usr);
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const opts = JSON.parse(clean);
+    statusEl.textContent = 'Pick an alternative or type your own:';
+    optsEl.innerHTML = opts.map(o => `<button class="rp-swap-opt" onclick="applyIngredientSwap(${ingIdx}, '${o.replace(/'/g,"\\'")}')">${o}</button>`).join('');
+  } catch(e) {
+    statusEl.textContent = 'Could not load suggestions — type your own below.';
+  }
+}
+
+async function applyIngredientSwap(ingIdx, newIngredient) {
+  newIngredient = (newIngredient||'').trim();
+  if (!newIngredient) return;
+  const statusEl = document.getElementById('ing-swap-status-' + ingIdx);
+  const optsEl = document.getElementById('ing-swap-options-' + ingIdx);
+  if (statusEl) statusEl.textContent = `Adjusting recipe to use "${newIngredient}"...`;
+  if (optsEl) optsEl.innerHTML = '';
+  const r = currentRecipe;
+  const oldIng = r.ingredients[ingIdx];
+  try {
+    const sys = `You are Chef Hailstorm. The user is swapping one ingredient in a recipe. Return ONLY a raw JSON object: {"ingredient":"new ingredient string with quantity","instructions":["step 1","step 2",...]}. The "ingredient" should be the new ingredient with appropriate quantity (e.g., if swapping chicken breast for ground chicken, adjust quantity if needed). The "instructions" should be the FULL revised instructions list, updated to handle the new ingredient correctly (e.g., ground meat needs different cooking technique than breast). Keep instructions clear and 5-8 steps.`;
+    const usr = `Recipe: ${r.name}\nDescription: ${r.description}\nFull ingredients: ${r.ingredients.join(', ')}\nCurrent instructions:\n${(r.instructions||[]).map((s,i)=>(i+1)+'. '+s).join('\n')}\n\nSwapping ingredient: "${oldIng}" → "${newIngredient}"`;
+    const raw = await callClaude(sys, usr);
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const data = JSON.parse(clean);
+    r.ingredients[ingIdx] = data.ingredient || newIngredient;
+    if (Array.isArray(data.instructions) && data.instructions.length) r.instructions = data.instructions;
+    // persist back
+    if (recipeIndexInWeekly >= 0) {
+      state.weeklyRecipes[recipeIndexInWeekly] = r;
+      persist(KEYS.weeklyRecipes, state.weeklyRecipes);
+    }
+    paintRecipePage();
+  } catch(e) {
+    if (statusEl) statusEl.textContent = 'Swap failed: ' + e.message;
+  }
+}
+
+function saveCurrentRecipeToBook() {
+  if (!currentRecipe) return;
+  const exists = state.recipes.find(x => x.name === currentRecipe.name);
+  if (exists) { showToast('Already in your recipe book'); return; }
+  state.recipes.unshift({ ...currentRecipe, savedOn: new Date().toLocaleDateString() });
+  persist(KEYS.recipes, state.recipes);
+  showToast('Saved to recipe book ✓');
+}
 
 function renderMFPPage() {
   const container = document.getElementById('mfp-page-content');
