@@ -861,16 +861,37 @@ function showToast(msg) {
 }
 
 // ══ CLAUDE API ══
-async function callClaude(systemPrompt, userMsg) {
+async function callClaude(systemPrompt, userMsg, options = {}) {
   if (!state.apiKey) { showToast('Add your API key in Settings first'); throw new Error('No API key'); }
+  const body = { model: 'claude-sonnet-4-6', max_tokens: 4000, system: systemPrompt, messages: [{ role: 'user', content: userMsg }] };
+  if (options.tools) body.tools = options.tools;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, system: systemPrompt, messages: [{ role: 'user', content: userMsg }] })
+    body: JSON.stringify(body)
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API error'); }
   const data = await res.json();
-  return data.content.find(b => b.type === 'text')?.text || '';
+  // Concatenate all text blocks (when server tools like web_search run, response can have multiple text blocks interleaved with tool use)
+  return data.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+}
+
+// Extract a JSON object or array from a response that may contain prose around it
+function extractJSON(text) {
+  if (!text) return text;
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  // Try object
+  const objStart = cleaned.indexOf('{');
+  const objEnd = cleaned.lastIndexOf('}');
+  // Try array
+  const arrStart = cleaned.indexOf('[');
+  const arrEnd = cleaned.lastIndexOf(']');
+  // Whichever appears first AND is a valid wrap
+  const objOk = objStart >= 0 && objEnd > objStart;
+  const arrOk = arrStart >= 0 && arrEnd > arrStart;
+  if (objOk && (!arrOk || objStart < arrStart)) return cleaned.slice(objStart, objEnd + 1);
+  if (arrOk) return cleaned.slice(arrStart, arrEnd + 1);
+  return cleaned;
 }
 
 // ══ CUISINE PICKER ══
@@ -1118,12 +1139,21 @@ function paintRecipePage() {
       </a>`).join('');
     const factorLabel = factor.toFixed(2).replace(/\.?0+$/, '');
     const safeName = (r.name||'Recipe').replace(/'/g, "\\'");
+    const isHealthified = !!r.isHealthified;
+    const swapsHTML = (r.swaps||[]).map(s => `
+      <div class="swap-row">
+        <div class="swap-body">
+          <div><span class="swap-old">${s.original}</span><span class="swap-arrow">→</span><span class="swap-new">${s.replacement}</span>${s.cal_saved ? `<span class="pill pill-teal" style="margin-left:8px; font-size:11px">${s.cal_saved}</span>` : ''}</div>
+          ${s.reason ? `<div class="swap-reason">${s.reason}</div>` : ''}
+        </div>
+      </div>`).join('');
     container.innerHTML = `
       <a href="${window.location.pathname}" class="rp-back">← Back to Chef Hailstorm</a>
-      <div class="rp-band" style="background:${COLORS[idx%COLORS.length]}"></div>
+      <div class="rp-band" style="background:${isHealthified ? 'var(--teal)' : COLORS[idx%COLORS.length]}"></div>
       <div class="rp-emoji">${r.emoji||'🍽️'}</div>
       <div class="rp-cuisine">${r.cuisine||'Recipe'}</div>
       <h1 class="rp-title">${r.name||'Recipe'}</h1>
+      ${isHealthified ? `<div style="margin-bottom:0.75rem"><span class="pill pill-teal" style="font-size:12px; padding:5px 12px">⚡ Healthified by you</span></div>` : ''}
       <p class="rp-desc">${r.description||''}</p>
       <div class="rp-meta">
         <span class="pill pill-purple">${r.kcal||''} / serving</span>
@@ -1134,6 +1164,13 @@ function paintRecipePage() {
         <div class="rp-healthy-label">⛈️ Why this fits your goals</div>
         <div class="rp-healthy-text">${r.whyHealthy || '<em style="color:var(--text3)">This recipe was generated before the goals-explanation feature was added. Regenerate this week\'s recipes to see why it fits your goals.</em>'}</div>
       </div>
+
+      ${isHealthified && swapsHTML ? `
+        <div class="rp-section-title">⚡ Healthify swaps</div>
+        <div style="background:var(--teal-light); border-radius:var(--radius-sm); padding:14px 18px; margin-bottom:1rem">
+          ${swapsHTML}
+          ${r.tip ? `<div style="margin-top:0.75rem; font-size:13px; color:var(--teal-dark)">⛈️ ${r.tip}</div>` : ''}
+        </div>` : ''}
 
       <div class="rp-section-title">Servings</div>
       <div class="rp-servings">
@@ -1150,15 +1187,27 @@ function paintRecipePage() {
       <div class="rp-section-title">Instructions</div>
       ${instructionsHTML ? `<ol class="rp-steps">${instructionsHTML}</ol>` : '<p style="color:var(--text3);font-size:13px;font-style:italic">No instructions for this recipe — try regenerating.</p>'}
 
-      <div class="rp-section-title">Reference recipes</div>
-      ${sourcesHTML ? `
-        <div>${sourcesHTML}</div>
-        <div class="rp-source-note">Note: these are recipes Chef Hailstorm referenced — URLs are AI-suggested and may occasionally be inaccurate.</div>
-      ` : `<p style="color:var(--text3);font-size:13px;font-style:italic">No reference recipes for this one — regenerate this week's recipes to get linked sources.</p>`}
+      ${isHealthified && r.originalUrl ? `
+        <div class="rp-section-title">Original recipe</div>
+        <a class="rp-source" href="${r.originalUrl}" target="_blank" rel="noopener">
+          <div>
+            <div class="rp-source-title">View the original (un-healthified) recipe</div>
+            <div class="rp-source-url">${r.originalUrl}</div>
+          </div>
+          <span class="rp-source-arrow">↗</span>
+        </a>
+      ` : `
+        <div class="rp-section-title">Reference recipes</div>
+        ${sourcesHTML ? `
+          <div>${sourcesHTML}</div>
+          <div class="rp-source-note">Note: these are recipes Chef Hailstorm referenced — URLs are AI-suggested and may occasionally be inaccurate.</div>
+        ` : `<p style="color:var(--text3);font-size:13px;font-style:italic">No reference recipes for this one — regenerate this week's recipes to get linked sources.</p>`}
+      `}
 
       <div class="rp-actions">
         <button class="btn btn-teal" onclick="logToMFP('${safeName}')">Log to MyFitnessPal ↗</button>
-        <button class="btn btn-primary" onclick="saveCurrentRecipeToBook()">Save to recipe book</button>
+        <button class="btn btn-primary" onclick="addCurrentRecipeToShopping()">🛒 Add to shopping list</button>
+        ${isHealthified ? '' : `<button class="btn btn-outline" onclick="saveCurrentRecipeToBook()">Save to recipe book</button>`}
       </div>`;
   } catch (err) {
     console.error('paintRecipePage error:', err);
@@ -1297,6 +1346,23 @@ function saveCurrentRecipeToBook() {
   showToast('Saved to recipe book ✓');
 }
 
+function addCurrentRecipeToShopping() {
+  if (!currentRecipe) return;
+  if (!Array.isArray(state.shopping)) state.shopping = [];
+  const factor = currentRecipeServings / currentRecipeBaseServings;
+  const scaled = (currentRecipe.ingredients || []).map(scaleIngredient.bind(null, factor));
+  let added = 0;
+  scaled.forEach(ing => {
+    const isPantry = state.pantry.some(p => ing.toLowerCase().includes(p.toLowerCase()));
+    if (!state.shopping.some(s => s.name === ing)) {
+      state.shopping.push({ name: ing, pantry: isPantry, checked: isPantry, recipe: currentRecipe.name });
+      added++;
+    }
+  });
+  persist(KEYS.shopping, state.shopping);
+  showToast(added ? `Added ${added} ingredient${added===1?'':'s'} to shopping list ✓` : 'All ingredients already in shopping list');
+}
+
 function renderMFPPage() {
   const container = document.getElementById('mfp-page-content');
   if (!container) return;
@@ -1419,17 +1485,58 @@ async function healthifyRecipe() {
 
   document.getElementById('healthify-btn').disabled = true;
   document.getElementById('healthify-loading').style.display = 'block';
+  document.getElementById('healthify-loading').querySelector('.loading-msg').textContent = 'Fetching the recipe and finding healthier swaps...';
   document.getElementById('healthify-result').innerHTML = '';
 
-  const system = `You are Chef Hailstorm. Given a recipe URL, return a JSON object with healthified swaps. Return ONLY raw JSON.
-Schema: {"name":"","original_cals":"","new_cals":"","original_protein":"","new_protein":"","swaps":[{"original":"","replacement":"","reason":"","cal_saved":""}],"kept":["item1"],"tip":"one hailstorm cooking tip"}`;
+  const system = `You are Chef Hailstorm. The user will give you a recipe URL.
 
-  const goals = `Goals: ${state.goals.goal}, ~${state.goals.calories} kcal/day, high protein.`;
+STEP 1: Use the web_search tool to find the actual content of the recipe at that URL. Search for the recipe by site + dish name (or paste a domain-restricted query) until you have the original ingredients and instructions. Do not skip this — the user is on an obscure site and you must read what's actually there.
+
+STEP 2: Once you have the real recipe, produce a healthified version that fits the user's goals.
+
+Return your final answer as ONLY raw JSON (no markdown, no prose around it).
+Schema: {
+  "name":"Healthified recipe name",
+  "emoji":"single food emoji",
+  "cuisine":"CuisineName",
+  "description":"one short sentence about the dish",
+  "original_cals":"~XXX kcal per serving",
+  "new_cals":"~XXX kcal per serving",
+  "original_protein":"~XXg per serving",
+  "new_protein":"~XXg per serving",
+  "kcal":"~XXX kcal",
+  "protein":"~XXg protein",
+  "time":"XX min",
+  "servings":"X",
+  "tags":["tag1","tag2"],
+  "ingredients":["item (qty)","item (qty)"],
+  "instructions":["Step 1.","Step 2.","..."],
+  "swaps":[{"original":"original ingredient as stated in source","replacement":"healthier replacement","reason":"why","cal_saved":"~XX kcal"}],
+  "kept":["unchanged item from source"],
+  "tip":"one hailstorm cooking tip",
+  "whyHealthy":"Short paragraph explaining how this version fits the user's stated goals.",
+  "sourceFound":true
+}
+Set "sourceFound": false if web_search did not return the actual recipe contents and you had to guess. The "ingredients" array MUST already reflect the swaps applied (not the original ingredients). Instructions should match the healthified ingredient list.`;
+
+  const goals = `Goals: ${state.goals.goal}, ~${state.goals.calories} kcal/day, high protein, max ${state.goals.maxTime} min.`;
 
   try {
-    const raw = await callClaude(system, `Healthify this recipe for someone with these goals: ${goals}\nURL: ${url}`);
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const data = JSON.parse(clean);
+    const raw = await callClaude(
+      system,
+      `Healthify this recipe for someone with these goals: ${goals}\nURL: ${url}\n\nUse web_search to read the actual recipe at that URL before suggesting swaps.`,
+      { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }] }
+    );
+    const data = JSON.parse(extractJSON(raw));
+    // Save healthified recipe to recipe book so detail page can find it
+    data.id = 'h_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+    data.isHealthified = true;
+    data.originalUrl = url;
+    data.savedOn = new Date().toLocaleDateString();
+    // Make sure recipe book exists, then unshift
+    if (!Array.isArray(state.recipes)) state.recipes = [];
+    state.recipes.unshift(data);
+    persist(KEYS.recipes, state.recipes);
     renderHealthifyResult(data, url);
   } catch(e) {
     document.getElementById('healthify-result').innerHTML = `<div class="card" style="border-color:rgba(216,90,48,0.3); color:var(--coral)">Error: ${e.message}</div>`;
@@ -1440,10 +1547,17 @@ Schema: {"name":"","original_cals":"","new_cals":"","original_protein":"","new_p
 
 function renderHealthifyResult(data, url) {
   const savedCal = parseInt(data.original_cals) - parseInt(data.new_cals) || '~200';
+  const sourceFoundBanner = data.sourceFound === false
+    ? `<div style="background:var(--amber-light); border-left:3px solid var(--amber); border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:1rem; font-size:13px; color:var(--amber-dark)">⚠️ Couldn't fetch the actual recipe from this URL. The healthified version below is based on a plausible guess of what the recipe likely contains.</div>`
+    : data.sourceFound === true
+      ? `<div style="background:var(--teal-light); border-left:3px solid var(--teal); border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:1rem; font-size:13px; color:var(--teal-dark)">✓ Read the original recipe from the URL — swaps below reflect actual ingredients in the source.</div>`
+      : '';
   const html = `
+    ${sourceFoundBanner}
     <div class="card" style="margin-bottom:1rem">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem">
         <div style="font-size:16px; font-weight:600; font-family:'Bricolage Grotesque',sans-serif">⚡ ${data.name||'Healthified recipe'}</div>
+        <span class="pill pill-teal" style="font-size:11px">⚡ Healthified</span>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(4,1fr); margin-bottom:1rem">
         <div class="stat-card"><div class="stat-num" style="font-size:16px">${data.new_cals||'~'}</div><div class="stat-label">new kcal</div></div>
@@ -1465,19 +1579,35 @@ function renderHealthifyResult(data, url) {
           ${data.kept.map(k => `<div style="font-size:13px; color:var(--text2); padding:4px 0; display:flex; align-items:center; gap:8px"><span style="width:8px; height:8px; border-radius:50%; background:var(--teal); flex-shrink:0; display:inline-block"></span>${k}</div>`).join('')}
         </div>` : ''}
       ${data.tip ? `<div style="margin-top:1rem; background:var(--teal-light); border-radius:var(--radius-sm); padding:12px; font-size:13px; color:var(--teal-dark)">⛈️ ${data.tip}</div>` : ''}
-      <div style="display:flex; gap:8px; margin-top:1rem">
-        <button class="btn btn-primary btn-sm" onclick="saveHealthifiedToBook(${JSON.stringify(data).replace(/"/g,'&quot;')})">Save to recipe book</button>
+      <div style="display:flex; gap:8px; margin-top:1rem; flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="openHealthifiedRecipe('${data.id}')">View full recipe ↗</button>
+        <button class="btn btn-teal btn-sm" onclick="addHealthifiedToShopping('${data.id}')">🛒 Add to shopping list</button>
         <a class="btn btn-outline btn-sm" href="${url}" target="_blank" rel="noopener">View original ↗</a>
       </div>
+      <p style="font-size:12px; color:var(--text3); margin-top:0.75rem">✓ Saved to your recipe book automatically.</p>
     </div>`;
   document.getElementById('healthify-result').innerHTML = html;
 }
 
-function saveHealthifiedToBook(data) {
-  const r = { name: '⚡ ' + (data.name||'Healthified recipe'), emoji: '⚡', description: `Healthified version · ${data.new_cals||'~'} kcal · ${data.new_protein||'~'} protein`, kcal: data.new_cals, protein: data.new_protein, savedOn: new Date().toLocaleDateString(), id: Date.now() };
-  state.recipes.unshift(r);
-  persist(KEYS.recipes, state.recipes);
-  showToast('Saved to recipe book ✓');
+function openHealthifiedRecipe(id) {
+  window.open(window.location.pathname + '?recipe=' + encodeURIComponent(id), '_blank');
+}
+
+function addHealthifiedToShopping(id) {
+  const r = (state.recipes || []).find(x => x.id === id);
+  if (!r) { showToast('Recipe not found'); return; }
+  if (!Array.isArray(state.shopping)) state.shopping = [];
+  let added = 0;
+  (r.ingredients || []).forEach(ing => {
+    const isPantry = state.pantry.some(p => ing.toLowerCase().includes(p.toLowerCase()));
+    // Avoid duplicate by name
+    if (!state.shopping.some(s => s.name === ing)) {
+      state.shopping.push({ name: ing, pantry: isPantry, checked: isPantry, recipe: r.name });
+      added++;
+    }
+  });
+  persist(KEYS.shopping, state.shopping);
+  showToast(added ? `Added ${added} ingredient${added===1?'':'s'} to shopping list ✓` : 'All ingredients already in shopping list');
 }
 
 // ══ PANTRY ══
