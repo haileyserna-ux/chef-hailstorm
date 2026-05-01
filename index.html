@@ -612,6 +612,42 @@ let state = {
   openRatingId: null,
 };
 
+// ══ CONSTANTS (must be declared before init runs) ══
+const COLORS = ['#7F77DD','#D4537E','#EF9F27','#1D9E75'];
+const PILL_CLS = ['pill-purple','pill-pink','pill-amber','pill-teal'];
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday'];
+const SHOP_SECTIONS = [
+  { title: 'Proteins', color: '#7F77DD', items: [
+    { name: 'Ground turkey (99% lean)', qty: '2 lbs' },
+    { name: 'Cod fillets', qty: '1.5 lbs' },
+    { name: 'Lean beef sirloin', qty: '1 lb' },
+    { name: 'Salmon fillet', qty: '1 lb' },
+  ]},
+  { title: 'Produce', color: '#1D9E75', items: [
+    { name: 'Broccoli', qty: '2 heads' },
+    { name: 'Snap peas', qty: '2 cups' },
+    { name: 'Cucumber', qty: '1 large' },
+    { name: 'Cherry tomatoes', qty: '1 pint' },
+    { name: 'Lemons', qty: '4' },
+    { name: 'Fresh parsley', qty: '1 bunch' },
+    { name: 'Green onions', qty: '1 bunch' },
+    { name: 'Zucchini', qty: '2 medium' },
+  ]},
+  { title: 'Pantry & dry goods', color: '#EF9F27', items: [
+    { name: 'Cannellini beans (canned)', qty: '2 × 15 oz' },
+    { name: 'Rice noodles', qty: '8 oz' },
+    { name: 'Low sodium soy sauce', qty: '1 bottle' },
+    { name: 'Sesame oil', qty: '1 bottle' },
+    { name: 'Gochujang paste', qty: '1 tub' },
+    { name: 'White miso paste', qty: '1 tub' },
+    { name: 'Chicken broth', qty: '1 carton' },
+  ]},
+  { title: 'Dairy', color: '#D4537E', items: [
+    { name: 'Part-skim ricotta', qty: '8 oz' },
+    { name: '2% cottage cheese', qty: '16 oz' },
+  ]},
+];
+
 function load() {
   state.apiKey = localStorage.getItem(KEYS.apiKey) || '';
   state.recipes = JSON.parse(localStorage.getItem(KEYS.recipes) || '[]');
@@ -769,10 +805,6 @@ ${ratingCtx ? 'Past ratings to factor in: ' + ratingCtx : ''}`;
   }
   btn.disabled = false;
 }
-
-const COLORS = ['#7F77DD','#D4537E','#EF9F27','#1D9E75'];
-const PILL_CLS = ['pill-purple','pill-pink','pill-amber','pill-teal'];
-const DAYS = ['Monday','Tuesday','Wednesday','Thursday'];
 
 function renderWeeklyRecipes(recipes) {
   const grid = document.createElement('div');
@@ -1014,38 +1046,6 @@ function renderPantry() {
 }
 
 // ══ SHOPPING LIST ══
-const SHOP_SECTIONS = [
-  { title: 'Proteins', color: '#7F77DD', items: [
-    { name: 'Ground turkey (99% lean)', qty: '2 lbs' },
-    { name: 'Cod fillets', qty: '1.5 lbs' },
-    { name: 'Lean beef sirloin', qty: '1 lb' },
-    { name: 'Salmon fillet', qty: '1 lb' },
-  ]},
-  { title: 'Produce', color: '#1D9E75', items: [
-    { name: 'Broccoli', qty: '2 heads' },
-    { name: 'Snap peas', qty: '2 cups' },
-    { name: 'Cucumber', qty: '1 large' },
-    { name: 'Cherry tomatoes', qty: '1 pint' },
-    { name: 'Lemons', qty: '4' },
-    { name: 'Fresh parsley', qty: '1 bunch' },
-    { name: 'Green onions', qty: '1 bunch' },
-    { name: 'Zucchini', qty: '2 medium' },
-  ]},
-  { title: 'Pantry & dry goods', color: '#EF9F27', items: [
-    { name: 'Cannellini beans (canned)', qty: '2 × 15 oz' },
-    { name: 'Rice noodles', qty: '8 oz' },
-    { name: 'Low sodium soy sauce', qty: '1 bottle' },
-    { name: 'Sesame oil', qty: '1 bottle' },
-    { name: 'Gochujang paste', qty: '1 tub' },
-    { name: 'White miso paste', qty: '1 tub' },
-    { name: 'Chicken broth', qty: '1 carton' },
-  ]},
-  { title: 'Dairy', color: '#D4537E', items: [
-    { name: 'Part-skim ricotta', qty: '8 oz' },
-    { name: '2% cottage cheese', qty: '16 oz' },
-  ]},
-];
-
 function buildShoppingFromRecipes(recipes) {
   const items = [];
   recipes.forEach(r => {
