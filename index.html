@@ -1029,104 +1029,144 @@ let originalIngredients = [];
 let recipeIndexInWeekly = -1;
 
 function findRecipeById(id) {
-  let idx = state.weeklyRecipes.findIndex(r => r.id === id);
-  if (idx >= 0) return { recipe: state.weeklyRecipes[idx], idx, source: 'weekly' };
-  idx = state.recipes.findIndex(r => r.id === id);
-  if (idx >= 0) return { recipe: state.recipes[idx], idx, source: 'book' };
+  const weekly = Array.isArray(state.weeklyRecipes) ? state.weeklyRecipes : [];
+  const book = Array.isArray(state.recipes) ? state.recipes : [];
+  let idx = weekly.findIndex(r => r && r.id === id);
+  if (idx >= 0) return { recipe: weekly[idx], idx, source: 'weekly' };
+  idx = book.findIndex(r => r && r.id === id);
+  if (idx >= 0) return { recipe: book[idx], idx, source: 'book' };
   return null;
 }
 
 function renderRecipePage(id) {
-  const found = findRecipeById(id);
   const container = document.getElementById('recipe-page-content');
-  if (!found) {
+  try {
+    const found = findRecipeById(id);
+    if (!found) {
+      const weeklyCount = (state.weeklyRecipes||[]).length;
+      const bookCount = (state.recipes||[]).length;
+      const weeklyIds = (state.weeklyRecipes||[]).map(r => r && r.id ? r.id : '(no id)').join(', ') || 'none';
+      container.innerHTML = `
+        <a href="${window.location.pathname}" class="rp-back">← Back to Chef Hailstorm</a>
+        <div class="empty" style="text-align:left; padding:2rem 0">
+          <span class="empty-icon" style="display:block; text-align:center">🤷</span>
+          <div class="empty-text" style="font-size:15px; line-height:1.7">
+            <p style="text-align:center; margin-bottom:1.5rem"><strong>Recipe not found in this browser's storage.</strong></p>
+            <p>This usually means one of these:</p>
+            <ul style="margin:0.5rem 0 1rem 1.5rem; padding:0">
+              <li>You opened this link in a different browser, profile, or incognito window than the one that generated the recipes</li>
+              <li>The weekly recipes were regenerated since this URL was created</li>
+              <li>Browser storage was cleared</li>
+            </ul>
+            <p style="margin-top:1rem; font-size:12px; color:var(--text3)">
+              Looking for: <code>${id}</code><br>
+              Weekly recipes in storage: ${weeklyCount} (${weeklyIds})<br>
+              Saved recipes in book: ${bookCount}
+            </p>
+          </div>
+        </div>`;
+      return;
+    }
+    currentRecipe = found.recipe;
+    recipeIndexInWeekly = found.source === 'weekly' ? found.idx : -1;
+    const baseServ = parseInt(currentRecipe.servings) || 4;
+    currentRecipeBaseServings = baseServ;
+    currentRecipeServings = baseServ;
+    originalIngredients = [...(currentRecipe.ingredients || [])];
+    document.title = (currentRecipe.emoji||'🍽️') + ' ' + (currentRecipe.name||'Recipe') + ' · Chef Hailstorm';
+    paintRecipePage();
+  } catch (err) {
+    console.error('Recipe page render error:', err);
     container.innerHTML = `
-      <div class="empty">
-        <span class="empty-icon">🤷</span>
-        <div class="empty-text">Recipe not found.<br>It may have been swapped or cleared.<br><br>
-        <a href="${window.location.pathname}" style="color:var(--purple)">← Back to Chef Hailstorm</a></div>
+      <a href="${window.location.pathname}" class="rp-back">← Back to Chef Hailstorm</a>
+      <div class="card" style="border-color:rgba(216,90,48,0.3); background:var(--coral-light); color:var(--coral)">
+        <strong>Something went wrong rendering this recipe.</strong><br><br>
+        <code style="font-size:12px; word-break:break-word">${(err && err.message) || err}</code>
       </div>`;
-    return;
   }
-  currentRecipe = found.recipe;
-  recipeIndexInWeekly = found.source === 'weekly' ? found.idx : -1;
-  const baseServ = parseInt(currentRecipe.servings) || 4;
-  currentRecipeBaseServings = baseServ;
-  currentRecipeServings = baseServ;
-  originalIngredients = [...(currentRecipe.ingredients || [])];
-  document.title = (currentRecipe.emoji||'🍽️') + ' ' + currentRecipe.name + ' · Chef Hailstorm';
-  paintRecipePage();
 }
 
 function paintRecipePage() {
-  const r = currentRecipe;
   const container = document.getElementById('recipe-page-content');
-  const idx = recipeIndexInWeekly >= 0 ? recipeIndexInWeekly : 0;
-  const factor = currentRecipeServings / currentRecipeBaseServings;
-  const scaledIngredients = (r.ingredients||[]).map(scaleIngredient.bind(null, factor));
-  const ingredientsHTML = scaledIngredients.map((ing, i) => {
-    const wasSwapped = originalIngredients[i] && originalIngredients[i] !== r.ingredients[i];
-    return `
-      <div class="rp-ing" id="ing-row-${i}">
-        <div class="rp-ing-name${wasSwapped?' swapped':''}">
-          ${wasSwapped ? `<span class="was">${originalIngredients[i]}</span>` : ''}${ing}
+  try {
+    const r = currentRecipe || {};
+    const idx = recipeIndexInWeekly >= 0 ? recipeIndexInWeekly : 0;
+    const factor = currentRecipeServings / currentRecipeBaseServings;
+    const scaledIngredients = (r.ingredients||[]).map(scaleIngredient.bind(null, factor));
+    const ingredientsHTML = scaledIngredients.map((ing, i) => {
+      const wasSwapped = originalIngredients[i] && (r.ingredients||[])[i] && originalIngredients[i] !== r.ingredients[i];
+      return `
+        <div class="rp-ing" id="ing-row-${i}">
+          <div class="rp-ing-name${wasSwapped?' swapped':''}">
+            ${wasSwapped ? `<span class="was">${originalIngredients[i]}</span>` : ''}${ing}
+          </div>
+          <button class="rp-ing-swap" id="ing-swap-btn-${i}" onclick="toggleIngredientSwap(${i})">🔄 Swap</button>
+          <div id="ing-swap-panel-${i}" style="width:100%"></div>
+        </div>`;
+    }).join('');
+    const instructionsHTML = (r.instructions||[]).map(s => `<li>${s}</li>`).join('');
+    const sourcesHTML = (r.sources||[]).map(s => `
+      <a class="rp-source" href="${s.url}" target="_blank" rel="noopener">
+        <div>
+          <div class="rp-source-title">${s.title||s.url}</div>
+          <div class="rp-source-url">${s.url}</div>
         </div>
-        <button class="rp-ing-swap" id="ing-swap-btn-${i}" onclick="toggleIngredientSwap(${i})">🔄 Swap</button>
-        <div id="ing-swap-panel-${i}" style="width:100%"></div>
-      </div>`;
-  }).join('');
-  const instructionsHTML = (r.instructions||[]).map(s => `<li>${s}</li>`).join('');
-  const sourcesHTML = (r.sources||[]).map(s => `
-    <a class="rp-source" href="${s.url}" target="_blank" rel="noopener">
-      <div>
-        <div class="rp-source-title">${s.title||s.url}</div>
-        <div class="rp-source-url">${s.url}</div>
+        <span class="rp-source-arrow">↗</span>
+      </a>`).join('');
+    const factorLabel = factor.toFixed(2).replace(/\.?0+$/, '');
+    const safeName = (r.name||'Recipe').replace(/'/g, "\\'");
+    container.innerHTML = `
+      <a href="${window.location.pathname}" class="rp-back">← Back to Chef Hailstorm</a>
+      <div class="rp-band" style="background:${COLORS[idx%COLORS.length]}"></div>
+      <div class="rp-emoji">${r.emoji||'🍽️'}</div>
+      <div class="rp-cuisine">${r.cuisine||'Recipe'}</div>
+      <h1 class="rp-title">${r.name||'Recipe'}</h1>
+      <p class="rp-desc">${r.description||''}</p>
+      <div class="rp-meta">
+        <span class="pill pill-purple">${r.kcal||''} / serving</span>
+        <span class="pill pill-teal">${r.protein||''}</span>
+        <span class="pill pill-amber">⏱ ${r.time||''}</span>
       </div>
-      <span class="rp-source-arrow">↗</span>
-    </a>`).join('');
-  container.innerHTML = `
-    <a href="${window.location.pathname}" class="rp-back">← Back to Chef Hailstorm</a>
-    <div class="rp-band" style="background:${COLORS[idx%COLORS.length]}"></div>
-    <div class="rp-emoji">${r.emoji||'🍽️'}</div>
-    <div class="rp-cuisine">${r.cuisine||'Recipe'}</div>
-    <h1 class="rp-title">${r.name}</h1>
-    <p class="rp-desc">${r.description||''}</p>
-    <div class="rp-meta">
-      <span class="pill pill-purple">${r.kcal||''} / serving</span>
-      <span class="pill pill-teal">${r.protein||''}</span>
-      <span class="pill pill-amber">⏱ ${r.time||''}</span>
-    </div>
-    ${r.whyHealthy ? `
-      <div class="rp-healthy">
-        <div class="rp-healthy-label">⛈️ Why this fits your goals</div>
-        <div class="rp-healthy-text">${r.whyHealthy}</div>
-      </div>` : ''}
+      ${r.whyHealthy ? `
+        <div class="rp-healthy">
+          <div class="rp-healthy-label">⛈️ Why this fits your goals</div>
+          <div class="rp-healthy-text">${r.whyHealthy}</div>
+        </div>` : ''}
 
-    <div class="rp-section-title">Servings</div>
-    <div class="rp-servings">
-      <button class="rp-svc-btn" onclick="changeServings(-1)" ${currentRecipeServings<=1?'disabled':''}>−</button>
-      <span class="rp-svc-num">${currentRecipeServings}</span>
-      <button class="rp-svc-btn" onclick="changeServings(1)">+</button>
-      <span class="rp-servings-label">${currentRecipeServings === currentRecipeBaseServings ? `Recipe makes ${currentRecipeBaseServings}` : `Scaled from ${currentRecipeBaseServings} (×${factor.toFixed(2).replace(/\\.?0+$/, '')})`}</span>
-      ${currentRecipeServings !== currentRecipeBaseServings ? `<button class="rp-svc-reset" onclick="resetServings()">Reset</button>` : ''}
-    </div>
+      <div class="rp-section-title">Servings</div>
+      <div class="rp-servings">
+        <button class="rp-svc-btn" onclick="changeServings(-1)" ${currentRecipeServings<=1?'disabled':''}>−</button>
+        <span class="rp-svc-num">${currentRecipeServings}</span>
+        <button class="rp-svc-btn" onclick="changeServings(1)">+</button>
+        <span class="rp-servings-label">${currentRecipeServings === currentRecipeBaseServings ? `Recipe makes ${currentRecipeBaseServings}` : `Scaled from ${currentRecipeBaseServings} (×${factorLabel})`}</span>
+        ${currentRecipeServings !== currentRecipeBaseServings ? `<button class="rp-svc-reset" onclick="resetServings()">Reset</button>` : ''}
+      </div>
 
-    <div class="rp-section-title">Ingredients</div>
-    <div>${ingredientsHTML || '<p style="color:var(--text3);font-size:13px">No ingredients listed.</p>'}</div>
+      <div class="rp-section-title">Ingredients</div>
+      <div>${ingredientsHTML || '<p style="color:var(--text3);font-size:13px">No ingredients listed.</p>'}</div>
 
-    <div class="rp-section-title">Instructions</div>
-    ${instructionsHTML ? `<ol class="rp-steps">${instructionsHTML}</ol>` : '<p style="color:var(--text3);font-size:13px;font-style:italic">No instructions for this recipe — try regenerating.</p>'}
+      <div class="rp-section-title">Instructions</div>
+      ${instructionsHTML ? `<ol class="rp-steps">${instructionsHTML}</ol>` : '<p style="color:var(--text3);font-size:13px;font-style:italic">No instructions for this recipe — try regenerating.</p>'}
 
-    ${sourcesHTML ? `
-      <div class="rp-section-title">Reference recipes</div>
-      <div>${sourcesHTML}</div>
-      <div class="rp-source-note">Note: these are recipes Chef Hailstorm referenced — URLs are AI-suggested and may occasionally be inaccurate.</div>
-    ` : ''}
+      ${sourcesHTML ? `
+        <div class="rp-section-title">Reference recipes</div>
+        <div>${sourcesHTML}</div>
+        <div class="rp-source-note">Note: these are recipes Chef Hailstorm referenced — URLs are AI-suggested and may occasionally be inaccurate.</div>
+      ` : ''}
 
-    <div class="rp-actions">
-      <button class="btn btn-teal" onclick="logToMFP('${r.name.replace(/'/g,"\\'")}')">Log to MyFitnessPal ↗</button>
-      <button class="btn btn-primary" onclick="saveCurrentRecipeToBook()">Save to recipe book</button>
-    </div>`;
+      <div class="rp-actions">
+        <button class="btn btn-teal" onclick="logToMFP('${safeName}')">Log to MyFitnessPal ↗</button>
+        <button class="btn btn-primary" onclick="saveCurrentRecipeToBook()">Save to recipe book</button>
+      </div>`;
+  } catch (err) {
+    console.error('paintRecipePage error:', err);
+    container.innerHTML = `
+      <a href="${window.location.pathname}" class="rp-back">← Back to Chef Hailstorm</a>
+      <div class="card" style="border-color:rgba(216,90,48,0.3); background:var(--coral-light); color:var(--coral)">
+        <strong>Error rendering recipe details.</strong><br><br>
+        <code style="font-size:12px; word-break:break-word">${(err && err.message) || err}</code>
+      </div>`;
+  }
 }
 
 // Servings scaling
