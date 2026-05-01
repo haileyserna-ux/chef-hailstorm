@@ -1172,13 +1172,15 @@ function paintRecipePage() {
   }
 }
 
-// Servings scaling
+// Servings scaling — finds the first number in the string (mixed fraction, fraction, or decimal)
+// and scales it. Handles both "1 lb chicken" and "Chicken breast (1 lb)" formats since recipes
+// from Claude store quantities inside parentheses.
 function scaleIngredient(factor, str) {
   if (factor === 1) return str;
-  return str.replace(/^(\s*)((?:\d+\s+\d+\/\d+)|(?:\d+\/\d+)|(?:\d+(?:\.\d+)?))/, (match, ws, num) => {
+  const re = /((?:\d+\s+\d+\/\d+)|(?:\d+\/\d+)|(?:\d+(?:\.\d+)?))/;
+  return str.replace(re, (match, num) => {
     let val;
     if (num.includes(' ')) {
-      // mixed: "1 1/2"
       const [whole, frac] = num.split(' ');
       const [n, d] = frac.split('/');
       val = parseInt(whole) + parseInt(n)/parseInt(d);
@@ -1188,8 +1190,7 @@ function scaleIngredient(factor, str) {
     } else {
       val = parseFloat(num);
     }
-    const scaled = val * factor;
-    return ws + formatQuantity(scaled);
+    return formatQuantity(val * factor);
   });
 }
 
