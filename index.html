@@ -1130,11 +1130,10 @@ function paintRecipePage() {
         <span class="pill pill-teal">${r.protein||''}</span>
         <span class="pill pill-amber">⏱ ${r.time||''}</span>
       </div>
-      ${r.whyHealthy ? `
-        <div class="rp-healthy">
-          <div class="rp-healthy-label">⛈️ Why this fits your goals</div>
-          <div class="rp-healthy-text">${r.whyHealthy}</div>
-        </div>` : ''}
+      <div class="rp-healthy">
+        <div class="rp-healthy-label">⛈️ Why this fits your goals</div>
+        <div class="rp-healthy-text">${r.whyHealthy || '<em style="color:var(--text3)">This recipe was generated before the goals-explanation feature was added. Regenerate this week\'s recipes to see why it fits your goals.</em>'}</div>
+      </div>
 
       <div class="rp-section-title">Servings</div>
       <div class="rp-servings">
@@ -1151,11 +1150,11 @@ function paintRecipePage() {
       <div class="rp-section-title">Instructions</div>
       ${instructionsHTML ? `<ol class="rp-steps">${instructionsHTML}</ol>` : '<p style="color:var(--text3);font-size:13px;font-style:italic">No instructions for this recipe — try regenerating.</p>'}
 
+      <div class="rp-section-title">Reference recipes</div>
       ${sourcesHTML ? `
-        <div class="rp-section-title">Reference recipes</div>
         <div>${sourcesHTML}</div>
         <div class="rp-source-note">Note: these are recipes Chef Hailstorm referenced — URLs are AI-suggested and may occasionally be inaccurate.</div>
-      ` : ''}
+      ` : `<p style="color:var(--text3);font-size:13px;font-style:italic">No reference recipes for this one — regenerate this week's recipes to get linked sources.</p>`}
 
       <div class="rp-actions">
         <button class="btn btn-teal" onclick="logToMFP('${safeName}')">Log to MyFitnessPal ↗</button>
