@@ -945,7 +945,8 @@ ${ratingCtx ? 'Past ratings to factor in: ' + ratingCtx : ''}`;
     clearInterval(interval);
     loading.style.display = 'none';
     renderWeeklyRecipes(recipes);
-    buildShoppingFromRecipes(recipes);
+    // Note: shopping list is NOT auto-populated. The user adds items explicitly via the
+    // "Add to shopping list" button on each card or the recipe detail page.
   } catch(e) {
     clearInterval(interval);
     loading.style.display = 'none';
@@ -976,9 +977,10 @@ function renderWeeklyRecipes(recipes) {
         <div class="recipe-pills">${(r.tags||[]).map((t,ti) => `<span class="pill ${PILL_CLS[ti%PILL_CLS.length]}">${t}</span>`).join('')}</div>
         <div class="recipe-macros">${r.kcal} · ${r.protein} · ${r.time}</div>
         <span class="recipe-view-link">View full recipe ↗</span>
-        <div class="recipe-btns" style="margin-top:8px">
+        <div class="recipe-btns" style="margin-top:8px; flex-wrap:wrap">
           <button class="recipe-btn primary" onclick="event.stopPropagation();saveToBook(${i})">Save ↗</button>
           <button class="recipe-btn green" onclick="event.stopPropagation();openRatingForm('${r.name.replace(/'/g,"\\'")}', ${i})">${rated ? 'Edit rating' : '✓ Made it'}</button>
+          <button class="recipe-btn" onclick="event.stopPropagation();addWeeklyRecipeToShopping(${i})" title="Add ingredients to shopping list">🛒 Shop</button>
           <button class="recipe-btn" onclick="event.stopPropagation();toggleRecipeSwap(${i})" id="swap-btn-${i}" title="Swap this recipe">🔄 Swap</button>
         </div>
         <div id="swap-panel-${i}"></div>
@@ -987,8 +989,42 @@ function renderWeeklyRecipes(recipes) {
     grid.appendChild(card);
   });
   document.getElementById('weekly-recipes').innerHTML = '';
+  if (recipes.length) {
+    const actionBar = document.createElement('div');
+    actionBar.style.cssText = 'display:flex; justify-content:flex-end; margin-bottom:0.75rem';
+    actionBar.innerHTML = `<button class="btn btn-teal btn-sm" onclick="addAllWeeklyToShopping()">🛒 Add all to shopping list</button>`;
+    document.getElementById('weekly-recipes').appendChild(actionBar);
+  }
   document.getElementById('weekly-recipes').appendChild(grid);
   renderMFPPage();
+}
+
+function addWeeklyRecipeToShopping(idx) {
+  const r = state.weeklyRecipes[idx];
+  if (!r) return;
+  const added = addRecipeIngredientsToShopping(r);
+  showToast(added ? `Added ${added} ingredient${added===1?'':'s'} to shopping list ✓` : 'All ingredients already in shopping list');
+}
+
+function addAllWeeklyToShopping() {
+  let total = 0;
+  (state.weeklyRecipes || []).forEach(r => { total += addRecipeIngredientsToShopping(r); });
+  showToast(total ? `Added ${total} ingredient${total===1?'':'s'} to shopping list ✓` : 'All ingredients already in shopping list');
+}
+
+function addRecipeIngredientsToShopping(r) {
+  if (!r || !Array.isArray(r.ingredients)) return 0;
+  if (!Array.isArray(state.shopping)) state.shopping = [];
+  let added = 0;
+  r.ingredients.forEach(ing => {
+    const isPantry = state.pantry.some(p => ing.toLowerCase().includes(p.toLowerCase()));
+    if (!state.shopping.some(s => s.name === ing)) {
+      state.shopping.push({ name: ing, pantry: isPantry, checked: isPantry, recipe: r.name });
+      added++;
+    }
+  });
+  if (added) persist(KEYS.shopping, state.shopping);
+  return added;
 }
 
 function openRecipeInNewTab(idx) {
@@ -1042,7 +1078,6 @@ ${ratingCtx ? 'Past ratings to factor in: ' + ratingCtx : ''}`;
     state.weeklyRecipes[idx] = newRecipe;
     persist(KEYS.weeklyRecipes, state.weeklyRecipes);
     renderWeeklyRecipes(state.weeklyRecipes);
-    buildShoppingFromRecipes(state.weeklyRecipes);
     showToast('Recipe swapped ✓');
   } catch(e) {
     if (panel) panel.innerHTML = `<div class="recipe-swap-panel" style="color:var(--coral); font-size:12px">Swap failed: ${e.message}</div>`;
@@ -1160,6 +1195,7 @@ function paintRecipePage() {
         <span class="pill pill-teal">${r.protein||''}</span>
         <span class="pill pill-amber">⏱ ${r.time||''}</span>
       </div>
+      <div id="rp-rating-section" style="margin-bottom:1.5rem">${renderRpRatingSection(r)}</div>
       <div class="rp-healthy">
         <div class="rp-healthy-label">⛈️ Why this fits your goals</div>
         <div class="rp-healthy-text">${r.whyHealthy || '<em style="color:var(--text3)">This recipe was generated before the goals-explanation feature was added. Regenerate this week\'s recipes to see why it fits your goals.</em>'}</div>
@@ -1346,6 +1382,66 @@ function saveCurrentRecipeToBook() {
   showToast('Saved to recipe book ✓');
 }
 
+// ── Recipe-page rating ──
+let rpPendingStars = 0;
+
+function renderRpRatingSection(r) {
+  const rated = state.ratings[r.name];
+  if (!rated) {
+    return `<button class="btn btn-teal" onclick="openRpRatingForm()" style="font-size:13px; padding:8px 14px">✓ Made it</button>`;
+  }
+  const stars = '★'.repeat(rated.stars) + '☆'.repeat(5 - rated.stars);
+  return `
+    <div class="made-badge" style="font-size:13px; padding:6px 12px">✓ Made it · ${stars}</div>
+    ${rated.note ? `<div style="font-size:13px; color:var(--text2); font-style:italic; margin-top:6px">"${rated.note}"</div>` : ''}
+    <div style="margin-top:8px">
+      <button class="btn btn-outline" onclick="openRpRatingForm()" style="font-size:12px; padding:6px 12px">Edit rating</button>
+    </div>`;
+}
+
+function openRpRatingForm() {
+  if (!currentRecipe) return;
+  const rated = state.ratings[currentRecipe.name];
+  rpPendingStars = rated ? rated.stars : 0;
+  const section = document.getElementById('rp-rating-section');
+  if (!section) return;
+  section.innerHTML = `
+    <div class="rating-form">
+      <div style="font-size:13px; color:var(--text2); margin-bottom:6px">How was it?</div>
+      <div class="star-row" id="rp-sr">
+        ${[1,2,3,4,5].map(n => `<button class="star-btn ${n<=rpPendingStars?'star-filled':'star-empty'}" onclick="pickRpStar(${n})">${n<=rpPendingStars?'★':'☆'}</button>`).join('')}
+      </div>
+      <textarea id="rp-note" rows="2" placeholder="Notes for next time..." style="width:100%; padding:8px; border:1px solid var(--border); border-radius:var(--radius-sm); font-family:inherit; font-size:13px; margin-bottom:8px">${rated?.note||''}</textarea>
+      <div style="display:flex; gap:6px">
+        <button class="btn btn-primary btn-sm" onclick="saveRpRating()">Save</button>
+        <button class="btn btn-outline btn-sm" onclick="closeRpRatingForm()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+function pickRpStar(n) {
+  rpPendingStars = n;
+  const sr = document.getElementById('rp-sr');
+  if (!sr) return;
+  sr.innerHTML = [1,2,3,4,5].map(i => `<button class="star-btn ${i<=n?'star-filled':'star-empty'}" onclick="pickRpStar(${i})">${i<=n?'★':'☆'}</button>`).join('');
+}
+
+function saveRpRating() {
+  if (!currentRecipe) return;
+  const note = document.getElementById('rp-note')?.value.trim() || '';
+  state.ratings[currentRecipe.name] = { name: currentRecipe.name, stars: rpPendingStars, note, ratedOn: new Date().toLocaleDateString() };
+  persist(KEYS.ratings, state.ratings);
+  showToast('Rating saved ✓');
+  // Re-render just the rating section
+  const section = document.getElementById('rp-rating-section');
+  if (section) section.innerHTML = renderRpRatingSection(currentRecipe);
+}
+
+function closeRpRatingForm() {
+  const section = document.getElementById('rp-rating-section');
+  if (section && currentRecipe) section.innerHTML = renderRpRatingSection(currentRecipe);
+}
+
 function addCurrentRecipeToShopping() {
   if (!currentRecipe) return;
   if (!Array.isArray(state.shopping)) state.shopping = [];
@@ -1444,27 +1540,40 @@ function renderRecipeBook() {
     return;
   }
   container.innerHTML = state.recipes.map((r, i) => {
+    // Ensure every saved recipe has an id (older saves may lack one)
+    if (!r.id) {
+      r.id = 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7) + '_' + i;
+    }
     const rated = state.ratings[r.name];
     const starStr = rated ? '★'.repeat(rated.stars) + '☆'.repeat(5-rated.stars) : '';
+    const safeName = (r.name||'').replace(/'/g,"\\'");
     return `
-    <div class="card" style="margin-bottom:10px">
+    <div class="card recipe-card-clickable" style="margin-bottom:10px" onclick="openSavedRecipe('${r.id}', event)">
       <div style="display:flex; align-items:flex-start; gap:12px">
         <span style="font-size:24px">${r.emoji||'🍽️'}</span>
         <div style="flex:1">
-          <div style="font-size:15px; font-weight:500; color:var(--text); margin-bottom:4px; font-family:'Bricolage Grotesque',sans-serif">${r.name}</div>
+          ${rated ? `<div class="made-badge">✓ Made it · ${'★'.repeat(rated.stars)}${'☆'.repeat(5-rated.stars)}</div>` : ''}
+          <div style="font-size:15px; font-weight:500; color:var(--text); margin-bottom:4px; font-family:'Bricolage Grotesque',sans-serif">${r.name}${r.isHealthified ? ' <span class="pill pill-teal" style="font-size:10px; margin-left:4px; padding:2px 8px">⚡ Healthified</span>' : ''}</div>
           <div style="font-size:12px; color:var(--text2); margin-bottom:6px">${r.description||''}</div>
           ${r.kcal ? `<div style="font-size:12px; color:var(--text3); margin-bottom:6px">${r.kcal} · ${r.protein||''} · ${r.time||''}</div>` : ''}
-          ${rated ? `<div style="font-size:13px; color:var(--amber); margin-bottom:4px">${starStr}</div>` : ''}
           ${rated?.note ? `<div style="font-size:12px; color:var(--text2); font-style:italic; margin-bottom:8px">"${rated.note}"</div>` : ''}
           <div style="font-size:11px; color:var(--text3); margin-bottom:10px">Saved ${r.savedOn||''}</div>
-          <div style="display:flex; gap:6px">
-            <button class="recipe-btn primary" onclick="logToMFP('${r.name.replace(/'/g,"\\'")}')">Log to MFP ↗</button>
-            <button class="recipe-btn" onclick="deleteRecipe(${i})">Remove</button>
+          <span class="recipe-view-link">View full recipe ↗</span>
+          <div style="display:flex; gap:6px; margin-top:8px">
+            <button class="recipe-btn primary" onclick="event.stopPropagation();logToMFP('${safeName}')">Log to MFP ↗</button>
+            <button class="recipe-btn" onclick="event.stopPropagation();deleteRecipe(${i})">Remove</button>
           </div>
         </div>
       </div>
     </div>`;
   }).join('');
+  // Persist any newly-assigned ids so the URL works on reload
+  persist(KEYS.recipes, state.recipes);
+}
+
+function openSavedRecipe(id, ev) {
+  if (ev && ev.target.closest('button')) return;
+  window.open(window.location.pathname + '?recipe=' + encodeURIComponent(id), '_blank');
 }
 
 function deleteRecipe(i) {
@@ -1664,7 +1773,7 @@ function renderShoppingList() {
   document.getElementById('shop-progress').style.width = total ? Math.round((checked/total)*100) + '%' : '0%';
 
   if (!items.length) {
-    container.innerHTML = '<div class="empty"><span class="empty-icon">🛒</span><div class="empty-text">Generate recipes first to build your shopping list.</div></div>';
+    container.innerHTML = '<div class="empty"><span class="empty-icon">🛒</span><div class="empty-text">Your shopping list is empty.<br>Add ingredients from any recipe — head to <strong>This week</strong> or any recipe page and tap <strong>🛒 Add to shopping list</strong>.</div></div>';
     return;
   }
 
