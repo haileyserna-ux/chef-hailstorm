@@ -570,9 +570,10 @@
       </div>
       <div class="progress-wrap"><div class="progress-fill" id="shop-progress" style="width:0%"></div></div>
       <div id="shop-sections"></div>
-      <div style="display:flex; gap:8px; margin-top:1rem">
-        <button class="btn btn-primary" onclick="copyShoppingList()" style="flex:1">Copy list</button>
-        <button class="btn btn-outline" onclick="clearChecked()" style="flex:1">Clear checked</button>
+      <div style="display:flex; gap:8px; margin-top:1rem; flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="copyShoppingList()" style="flex:1; min-width:140px">Copy list</button>
+        <button class="btn btn-outline" onclick="clearChecked()" style="flex:1; min-width:140px">Clear checked</button>
+        <button class="btn btn-outline" onclick="clearAllShopping()" style="flex:1; min-width:140px; color:var(--coral); border-color:rgba(216,90,48,0.3)">Clear all</button>
       </div>
     </div>
 
@@ -1783,7 +1784,10 @@ function renderShoppingList() {
         ${items.map((item, i) => `
           <div class="shop-item${item.checked ? ' checked' : ''}" onclick="toggleShopItem(${i})">
             <div class="shop-checkbox">${item.checked ? '✓' : ''}</div>
-            <span class="shop-name">${item.name}</span>
+            <div style="flex:1; min-width:0">
+              <div class="shop-name">${item.name}</div>
+              ${item.recipe ? `<div style="font-size:11px; color:var(--text3); margin-top:2px">for ${item.recipe}</div>` : ''}
+            </div>
             ${item.pantry ? '<span class="pantry-badge">in pantry</span>' : `<a class="shop-link" href="https://www.instacart.com/store/s?k=${encodeURIComponent(item.name)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Shop ↗</a>`}
           </div>`).join('')}
       </div>`;
@@ -1828,6 +1832,15 @@ function clearChecked() {
   persist(KEYS.shopping, state.shopping);
   renderShoppingList();
   showToast('Checked items cleared');
+}
+
+function clearAllShopping() {
+  if (!state.shopping.length) { showToast('Shopping list is already empty'); return; }
+  if (!confirm('Clear all ' + state.shopping.length + ' items from your shopping list? This can\'t be undone.')) return;
+  state.shopping = [];
+  persist(KEYS.shopping, state.shopping);
+  renderShoppingList();
+  showToast('Shopping list cleared');
 }
 
 function copyShoppingList() {
