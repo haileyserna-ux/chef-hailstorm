@@ -755,6 +755,13 @@ const SHOP_SECTIONS = [
   ]},
 ];
 
+// ══ RECIPE DETAIL PAGE STATE (must be declared before init runs) ══
+let currentRecipe = null;
+let currentRecipeBaseServings = 4;
+let currentRecipeServings = 4;
+let originalIngredients = [];
+let recipeIndexInWeekly = -1;
+
 function load() {
   state.apiKey = localStorage.getItem(KEYS.apiKey) || '';
   state.recipes = JSON.parse(localStorage.getItem(KEYS.recipes) || '[]');
@@ -1022,11 +1029,7 @@ ${ratingCtx ? 'Past ratings to factor in: ' + ratingCtx : ''}`;
 }
 
 // ══ RECIPE DETAIL PAGE (new tab via ?recipe=id) ══
-let currentRecipe = null;
-let currentRecipeBaseServings = 4;
-let currentRecipeServings = 4;
-let originalIngredients = [];
-let recipeIndexInWeekly = -1;
+// (state vars for this section are declared at top of script — moved there to avoid TDZ on init)
 
 function findRecipeById(id) {
   const weekly = Array.isArray(state.weeklyRecipes) ? state.weeklyRecipes : [];
