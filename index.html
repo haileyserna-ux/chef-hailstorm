@@ -231,6 +231,39 @@
   .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--text); color: white; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 14px; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 1000; }
   .toast.show { opacity: 1; }
 
+  /* ── RECIPE DETAIL MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(26,24,48,0.55); display: none; align-items: flex-start; justify-content: center; z-index: 1100; overflow-y: auto; padding: 2rem 1rem; }
+  .modal-overlay.show { display: flex; }
+  .modal-card { background: var(--surface); border-radius: var(--radius); width: 100%; max-width: 640px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); overflow: hidden; position: relative; }
+  .modal-band { height: 6px; }
+  .modal-body { padding: 1.75rem; }
+  .modal-close { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 50%; background: var(--surface2); border: none; cursor: pointer; font-size: 18px; color: var(--text2); display: flex; align-items: center; justify-content: center; line-height: 1; transition: background 0.12s; }
+  .modal-close:hover { background: var(--border-md); color: var(--text); }
+  .modal-emoji { font-size: 38px; line-height: 1; margin-bottom: 6px; }
+  .modal-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 4px; line-height: 1.25; }
+  .modal-cuisine { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .modal-desc { font-size: 14px; color: var(--text2); margin-bottom: 14px; line-height: 1.6; }
+  .modal-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
+  .modal-meta .pill { font-size: 12px; }
+  .modal-section-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 600; color: var(--text); margin: 1.25rem 0 0.6rem; }
+  .modal-ingredients { list-style: none; padding: 0; margin: 0; }
+  .modal-ingredients li { padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .modal-ingredients li:last-child { border-bottom: none; }
+  .modal-ingredients li::before { content: '•'; color: var(--purple); font-size: 18px; line-height: 1; }
+  .modal-steps { padding-left: 0; margin: 0; counter-reset: step; list-style: none; }
+  .modal-steps li { position: relative; padding: 10px 0 10px 38px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text); line-height: 1.6; counter-increment: step; }
+  .modal-steps li:last-child { border-bottom: none; }
+  .modal-steps li::before { content: counter(step); position: absolute; left: 0; top: 10px; width: 26px; height: 26px; border-radius: 50%; background: var(--purple-light); color: var(--purple-dark); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 1.5rem; flex-wrap: wrap; }
+  .modal-actions .btn { flex: 1; min-width: 140px; justify-content: center; }
+
+  /* Make recipe cards clickable */
+  .recipe-card-clickable { cursor: pointer; }
+  .recipe-card-clickable .recipe-body > .recipe-name,
+  .recipe-card-clickable .recipe-body > .recipe-emoji { transition: opacity 0.12s; }
+  .recipe-card-clickable:hover .recipe-name { color: var(--purple-dark); }
+  .recipe-view-link { font-size: 12px; color: var(--purple); font-weight: 500; margin-top: 4px; display: inline-block; }
+
   /* ── MFP ── */
   .mfp-link { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid rgba(29,158,117,0.3); border-radius: var(--radius-sm); padding: 10px 14px; text-decoration: none; margin-bottom: 8px; transition: opacity 0.12s; }
   .mfp-link:hover { opacity: 0.8; }
@@ -589,6 +622,10 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="modal-overlay" id="recipe-modal" onclick="if(event.target===this)closeRecipeDetail()">
+  <div class="modal-card" id="recipe-modal-card"></div>
+</div>
+
 <script>
 // ══ STATE ══
 const KEYS = {
@@ -740,7 +777,7 @@ async function callClaude(systemPrompt, userMsg) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: systemPrompt, messages: [{ role: 'user', content: userMsg }] })
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, system: systemPrompt, messages: [{ role: 'user', content: userMsg }] })
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API error'); }
   const data = await res.json();
@@ -779,8 +816,8 @@ async function generateRecipes() {
   const pantryCtx = state.pantry.slice(0, 12).join(', ');
 
   const system = `You are Chef Hailstorm, a personal recipe assistant. Return ONLY a raw JSON array, no markdown, no explanation.
-Each item: {"emoji":"","name":"","description":"one sentence","kcal":"~XXX kcal","protein":"~XXg protein","time":"XX min","tags":["tag1","tag2"],"cuisine":"CuisineName","ingredients":["item (qty)","item (qty)"]}
-Make recipes varied, genuinely delicious, and realistic for home cooking.`;
+Each item: {"emoji":"","name":"","description":"one sentence","kcal":"~XXX kcal","protein":"~XXg protein","time":"XX min","servings":"X","tags":["tag1","tag2"],"cuisine":"CuisineName","ingredients":["item (qty)","item (qty)"],"instructions":["Step 1 sentence.","Step 2 sentence.","..."]}
+Make recipes varied, genuinely delicious, and realistic for home cooking. Instructions should be 5-8 numbered steps, clear and concise — written like a friendly chef walking through it.`;
 
   const userMsg = `Generate 4 dinner recipes.
 Goals: ${state.goals.goal}, high protein ${state.goals.protein}, ~${state.goals.calories} kcal/day, ~${Math.round(state.goals.calories * 0.28)}-${Math.round(state.goals.calories * 0.32)} kcal per dinner, max ${state.goals.maxTime} min, ${state.goals.difficulty}.
@@ -812,7 +849,11 @@ function renderWeeklyRecipes(recipes) {
   recipes.forEach((r, i) => {
     const rated = state.ratings[r.name];
     const card = document.createElement('div');
-    card.className = 'recipe-card' + (rated ? ' made' : '');
+    card.className = 'recipe-card recipe-card-clickable' + (rated ? ' made' : '');
+    card.onclick = (ev) => {
+      if (ev.target.closest('button, .rating-form, textarea')) return;
+      openRecipeDetail(i);
+    };
     card.innerHTML = `
       <div class="recipe-band" style="background:${COLORS[i%COLORS.length]}"></div>
       <div class="recipe-body">
@@ -823,9 +864,10 @@ function renderWeeklyRecipes(recipes) {
         <div class="recipe-desc">${r.description}</div>
         <div class="recipe-pills">${(r.tags||[]).map((t,ti) => `<span class="pill ${PILL_CLS[ti%PILL_CLS.length]}">${t}</span>`).join('')}</div>
         <div class="recipe-macros">${r.kcal} · ${r.protein} · ${r.time}</div>
-        <div class="recipe-btns">
-          <button class="recipe-btn primary" onclick="saveToBook(${i})">Save ↗</button>
-          <button class="recipe-btn green" onclick="openRatingForm('${r.name.replace(/'/g,"\\'")}', ${i})">${rated ? 'Edit rating' : '✓ Made it'}</button>
+        <span class="recipe-view-link">View full recipe →</span>
+        <div class="recipe-btns" style="margin-top:8px">
+          <button class="recipe-btn primary" onclick="event.stopPropagation();saveToBook(${i})">Save ↗</button>
+          <button class="recipe-btn green" onclick="event.stopPropagation();openRatingForm('${r.name.replace(/'/g,"\\'")}', ${i})">${rated ? 'Edit rating' : '✓ Made it'}</button>
         </div>
         <div id="rating-form-${i}"></div>
       </div>`;
@@ -835,6 +877,55 @@ function renderWeeklyRecipes(recipes) {
   document.getElementById('weekly-recipes').appendChild(grid);
   renderMFPPage();
 }
+
+function openRecipeDetail(idx) {
+  const r = state.weeklyRecipes[idx];
+  if (!r) return;
+  const card = document.getElementById('recipe-modal-card');
+  const ingredients = (r.ingredients || []).map(i => `<li>${i}</li>`).join('');
+  const instructions = (r.instructions || []).map(s => `<li>${s}</li>`).join('');
+  const noInstructions = !r.instructions || !r.instructions.length;
+  card.innerHTML = `
+    <div class="modal-band" style="background:${COLORS[idx%COLORS.length]}"></div>
+    <button class="modal-close" onclick="closeRecipeDetail()" aria-label="Close">×</button>
+    <div class="modal-body">
+      <div class="modal-emoji">${r.emoji||'🍽️'}</div>
+      <div class="modal-cuisine">${DAYS[idx]||'Day '+(idx+1)} · ${r.cuisine||''}</div>
+      <h2 class="modal-title">${r.name}</h2>
+      <p class="modal-desc">${r.description||''}</p>
+      <div class="modal-meta">
+        <span class="pill pill-purple">${r.kcal||''}</span>
+        <span class="pill pill-teal">${r.protein||''}</span>
+        <span class="pill pill-amber">⏱ ${r.time||''}</span>
+        ${r.servings ? `<span class="pill pill-pink">${r.servings} servings</span>` : ''}
+      </div>
+      ${ingredients ? `
+        <div class="modal-section-title">Ingredients</div>
+        <ul class="modal-ingredients">${ingredients}</ul>` : ''}
+      ${noInstructions ? `
+        <div class="modal-section-title">Instructions</div>
+        <p style="font-size:13px; color:var(--text3); font-style:italic">No step-by-step instructions for this recipe yet — try regenerating to get them.</p>
+      ` : `
+        <div class="modal-section-title">Instructions</div>
+        <ol class="modal-steps">${instructions}</ol>`}
+      <div class="modal-actions">
+        <button class="btn btn-teal" onclick="logToMFP('${r.name.replace(/'/g,"\\'")}')">Log to MFP ↗</button>
+        <button class="btn btn-primary" onclick="saveToBook(${idx})">Save to recipe book</button>
+        <button class="btn btn-outline" onclick="closeRecipeDetail()">Close</button>
+      </div>
+    </div>`;
+  document.getElementById('recipe-modal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeRecipeDetail() {
+  document.getElementById('recipe-modal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeRecipeDetail();
+});
 
 function renderMFPPage() {
   const container = document.getElementById('mfp-page-content');
