@@ -693,6 +693,15 @@
   </main>
 </div>
 
+<!-- Recipe preview modal (slice 2) -->
+<div class="modal-overlay" id="preview-modal" onclick="if(event.target===this)closePreviewModal()">
+  <div class="modal-card">
+    <div class="modal-band" id="preview-modal-band" style="background:var(--purple)"></div>
+    <button class="modal-close" onclick="closePreviewModal()" aria-label="Close">×</button>
+    <div class="modal-body" id="preview-modal-body"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -729,6 +738,11 @@ let currentRecipeBaseServings = 4;
 let currentRecipeServings = 4;
 let originalIngredients = [];
 let recipeIndexInWeekly = -1;
+
+// ══ PREVIEW MODAL STATE (slice 2 — must be declared before init runs) ══
+let modalRecipe = null;
+let modalContext = null;     // 'week' | 'book' (more added in slice 3)
+let modalRecipeIndex = -1;
 
 function load() {
   state.apiKey = localStorage.getItem(KEYS.apiKey) || '';
@@ -1011,27 +1025,25 @@ function renderWeeklyRecipes(recipes) {
     card.className = 'recipe-card recipe-card-clickable' + (rated ? ' made' : '');
     card.onclick = (ev) => {
       if (ev.target.closest('button, textarea, input, .recipe-swap-panel')) return;
-      openRecipeInNewTab(i);
+      openPreviewModal(state.weeklyRecipes[i], 'week', i);
     };
     card.innerHTML = `
       <div class="recipe-band" style="background:${COLORS[i%COLORS.length]}"></div>
       <div class="recipe-body">
         <span class="recipe-emoji">${r.emoji}</span>
         <div class="recipe-day">${DAYS[i] || 'Day ' + (i+1)} · ${r.cuisine||''}</div>
-        ${rated ? `<div class="made-badge">✓ Made it · ${'★'.repeat(rated.stars)}</div>` : ''}
+        ${rated ? `<div class="made-badge">✓ Made it · ${'★'.repeat(rated.stars)}${'☆'.repeat(5-rated.stars)}</div>` : ''}
         <div class="recipe-name">${r.name}</div>
         <div class="recipe-desc">${r.description}</div>
         <div class="recipe-pills">${(r.tags||[]).map((t,ti) => `<span class="pill ${PILL_CLS[ti%PILL_CLS.length]}">${t}</span>`).join('')}</div>
         <div class="recipe-macros">${r.kcal} · ${r.protein} · ${r.time}</div>
-        <span class="recipe-view-link">View full recipe ↗</span>
+        <span class="recipe-view-link">Preview ↗</span>
         <div class="recipe-btns" style="margin-top:8px; flex-wrap:wrap">
           <button class="recipe-btn primary" onclick="event.stopPropagation();saveToBook(${i})">Save ↗</button>
-          <button class="recipe-btn green" onclick="event.stopPropagation();openRatingForm('${r.name.replace(/'/g,"\\'")}', ${i})">${rated ? 'Edit rating' : '✓ Made it'}</button>
           <button class="recipe-btn" onclick="event.stopPropagation();addWeeklyRecipeToShopping(${i})" title="Add ingredients to shopping list">🛒 Shop</button>
           <button class="recipe-btn" onclick="event.stopPropagation();toggleRecipeSwap(${i})" id="swap-btn-${i}" title="Swap this recipe">🔄 Swap</button>
         </div>
         <div id="swap-panel-${i}"></div>
-        <div id="rating-form-${i}"></div>
       </div>`;
     grid.appendChild(card);
   });
@@ -1082,6 +1094,143 @@ function openRecipeInNewTab(idx) {
   }
   window.open(window.location.pathname + '?recipe=' + encodeURIComponent(r.id), '_blank');
 }
+
+// ══ PREVIEW MODAL (slice 2) ══
+function openPreviewModal(recipe, context, index) {
+  if (!recipe) return;
+  // Make sure the recipe has an id — needed by "Open full recipe" and remove actions
+  if (!recipe.id) {
+    recipe.id = 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+    if (context === 'week') persist(KEYS.weeklyRecipes, state.weeklyRecipes);
+    if (context === 'book') persist(KEYS.recipes, state.recipes);
+  }
+  modalRecipe = recipe;
+  modalContext = context;
+  modalRecipeIndex = (typeof index === 'number') ? index : -1;
+  paintPreviewModal();
+  document.getElementById('preview-modal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePreviewModal() {
+  document.getElementById('preview-modal').classList.remove('show');
+  document.body.style.overflow = '';
+  modalRecipe = null;
+  modalContext = null;
+  modalRecipeIndex = -1;
+}
+
+function paintPreviewModal() {
+  const r = modalRecipe;
+  if (!r) return;
+  const ctx = modalContext;
+  const idx = modalRecipeIndex;
+  const colorIdx = (idx >= 0 ? idx : 0) % COLORS.length;
+  const isHealthified = !!r.isHealthified;
+  const rated = state.ratings[r.name];
+
+  // Color band reflects healthified status or week position
+  document.getElementById('preview-modal-band').style.background =
+    isHealthified ? 'var(--teal)' : COLORS[colorIdx];
+
+  // Context-aware action buttons
+  let actionsHTML = `<button class="btn btn-primary" onclick="openFullRecipeFromModal()">Open full recipe ↗</button>`;
+  if (ctx === 'week') {
+    actionsHTML += `<button class="btn btn-outline" onclick="removeFromWeekFromModal()" style="color:var(--coral); border-color:rgba(216,90,48,0.3)">Remove from week</button>`;
+  } else if (ctx === 'book') {
+    actionsHTML += `<button class="btn btn-teal" onclick="addToWeekFromModal()">+ Add to this week</button>`;
+    actionsHTML += `<button class="btn btn-outline" onclick="removeFromBookFromModal()" style="color:var(--coral); border-color:rgba(216,90,48,0.3)">Remove from book</button>`;
+  }
+
+  const ingHTML = (r.ingredients || []).length
+    ? r.ingredients.map(i => `<li>${i}</li>`).join('')
+    : '<li><em style="color:var(--text3)">No ingredients listed.</em></li>';
+
+  document.getElementById('preview-modal-body').innerHTML = `
+    <div class="modal-emoji">${r.emoji || '🍽️'}</div>
+    ${r.cuisine ? `<div class="modal-cuisine">${r.cuisine}</div>` : ''}
+    <h2 class="modal-title">${r.name || 'Recipe'}</h2>
+    ${rated ? `<div class="made-badge" style="margin:6px 0 8px">✓ Made it · ${'★'.repeat(rated.stars)}${'☆'.repeat(5-rated.stars)}</div>` : ''}
+    ${isHealthified ? `<div style="margin:6px 0 8px"><span class="pill pill-teal" style="font-size:11px">⚡ Healthified</span></div>` : ''}
+    <p class="modal-desc">${r.description || ''}</p>
+    <div class="modal-meta">
+      ${r.kcal ? `<span class="pill pill-purple">${r.kcal}</span>` : ''}
+      ${r.protein ? `<span class="pill pill-teal">${r.protein}</span>` : ''}
+      ${r.time ? `<span class="pill pill-amber">⏱ ${r.time}</span>` : ''}
+    </div>
+    ${r.whyHealthy ? `
+      <div class="rp-healthy" style="margin: 1rem 0">
+        <div class="rp-healthy-label">⛈️ Why this fits your goals</div>
+        <div class="rp-healthy-text">${r.whyHealthy}</div>
+      </div>
+    ` : ''}
+    <div class="modal-section-title">Ingredients</div>
+    <ul class="modal-ingredients">${ingHTML}</ul>
+    <div class="modal-actions">${actionsHTML}</div>
+  `;
+}
+
+function openFullRecipeFromModal() {
+  if (!modalRecipe || !modalRecipe.id) {
+    showToast('This recipe is missing an ID — try regenerating');
+    return;
+  }
+  const id = modalRecipe.id;
+  closePreviewModal();
+  window.open(window.location.pathname + '?recipe=' + encodeURIComponent(id), '_blank');
+}
+
+function addToWeekFromModal() {
+  if (!modalRecipe) return;
+  if (!Array.isArray(state.weeklyRecipes)) state.weeklyRecipes = [];
+  const dupe = state.weeklyRecipes.some(x =>
+    (x.id && modalRecipe.id && x.id === modalRecipe.id) || x.name === modalRecipe.name
+  );
+  if (dupe) { showToast('Already in this week'); return; }
+  const toAdd = { ...modalRecipe };
+  if (!toAdd.id) toAdd.id = 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+  state.weeklyRecipes.push(toAdd);
+  persist(KEYS.weeklyRecipes, state.weeklyRecipes);
+  closePreviewModal();
+  if (document.getElementById('page-weekly')?.classList.contains('active')) {
+    renderWeeklyRecipes(state.weeklyRecipes);
+  }
+  showToast('Added to this week ✓');
+}
+
+function removeFromWeekFromModal() {
+  if (!modalRecipe) return;
+  const id = modalRecipe.id;
+  state.weeklyRecipes = (state.weeklyRecipes || []).filter(r => r.id !== id);
+  persist(KEYS.weeklyRecipes, state.weeklyRecipes);
+  closePreviewModal();
+  renderWeeklyRecipes(state.weeklyRecipes);
+  showToast('Removed from this week');
+}
+
+function removeFromBookFromModal() {
+  if (!modalRecipe) return;
+  const id = modalRecipe.id;
+  const beforeLen = (state.recipes || []).length;
+  state.recipes = (state.recipes || []).filter(r => r.id !== id);
+  if (state.recipes.length === beforeLen) {
+    // Fallback: id didn't match (older saves), match by name
+    state.recipes = state.recipes.filter(r => r.name !== modalRecipe.name);
+  }
+  persist(KEYS.recipes, state.recipes);
+  closePreviewModal();
+  if (document.getElementById('page-recipes')?.classList.contains('active')) {
+    renderRecipeBook();
+  }
+  showToast('Removed from recipe book');
+}
+
+// ESC key closes the modal when it's open
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const modal = document.getElementById('preview-modal');
+  if (modal && modal.classList.contains('show')) closePreviewModal();
+});
 
 // ══ SWAP A WHOLE RECIPE (weekly card) ══
 function toggleRecipeSwap(idx) {
@@ -1505,42 +1654,7 @@ function addCurrentRecipeToShopping() {
   showToast(added ? `Added ${added} ingredient${added===1?'':'s'} to shopping list ✓` : 'All ingredients already in shopping list');
 }
 
-// ══ RATING ══
-let pendingStars = {};
-
-function openRatingForm(name, idx) {
-  const container = document.getElementById('rating-form-' + idx);
-  if (container.innerHTML) { container.innerHTML = ''; return; }
-  const rated = state.ratings[name];
-  const stars = rated ? rated.stars : 0;
-  container.innerHTML = `
-    <div class="rating-form" style="margin-top:10px">
-      <div style="font-size:12px; color:var(--text2); margin-bottom:6px">How many stars?</div>
-      <div class="star-row" id="sr-${idx}" data-val="${stars}">
-        ${[1,2,3,4,5].map(n => `<button class="star-btn ${n<=stars?'star-filled':'star-empty'}" onclick="pickStar(${idx},${n})">${n<=stars?'★':'☆'}</button>`).join('')}
-      </div>
-      <textarea class="form-row" id="note-${idx}" rows="2" placeholder="Notes for next time..." style="margin-top:8px; margin-bottom:8px">${rated?.note||''}</textarea>
-      <button class="btn btn-primary btn-sm" onclick="saveRating('${name.replace(/'/g,"\\'")}', ${idx})">Save rating</button>
-    </div>`;
-  pendingStars[idx] = stars;
-}
-
-function pickStar(idx, n) {
-  pendingStars[idx] = n;
-  const sr = document.getElementById('sr-' + idx);
-  if (!sr) return;
-  sr.dataset.val = n;
-  sr.innerHTML = [1,2,3,4,5].map(i => `<button class="star-btn ${i<=n?'star-filled':'star-empty'}" onclick="pickStar(${idx},${i})">${i<=n?'★':'☆'}</button>`).join('');
-}
-
-function saveRating(name, idx) {
-  const stars = pendingStars[idx] || 0;
-  const note = document.getElementById('note-' + idx)?.value.trim() || '';
-  state.ratings[name] = { name, stars, note, ratedOn: new Date().toLocaleDateString() };
-  persist(KEYS.ratings, state.ratings);
-  showToast('Rating saved ✓');
-  if (state.weeklyRecipes.length) renderWeeklyRecipes(state.weeklyRecipes);
-}
+// (Rating UI now lives only on the full recipe page — see openRpRatingForm.)
 
 // ══ SAVE TO BOOK ══
 function saveToBook(idx) {
@@ -1596,7 +1710,13 @@ function renderRecipeBook() {
 
 function openSavedRecipe(id, ev) {
   if (ev && ev.target.closest('button')) return;
-  window.open(window.location.pathname + '?recipe=' + encodeURIComponent(id), '_blank');
+  const i = (state.recipes || []).findIndex(r => r.id === id);
+  if (i < 0) {
+    // Fallback: id missing — just open the full page directly
+    window.open(window.location.pathname + '?recipe=' + encodeURIComponent(id), '_blank');
+    return;
+  }
+  openPreviewModal(state.recipes[i], 'book', i);
 }
 
 function deleteRecipe(i) {
@@ -1722,7 +1842,12 @@ function renderHealthifyResult(data, url) {
 }
 
 function openHealthifiedRecipe(id) {
-  window.open(window.location.pathname + '?recipe=' + encodeURIComponent(id), '_blank');
+  const i = (state.recipes || []).findIndex(r => r.id === id);
+  if (i < 0) {
+    window.open(window.location.pathname + '?recipe=' + encodeURIComponent(id), '_blank');
+    return;
+  }
+  openPreviewModal(state.recipes[i], 'book', i);
 }
 
 function addHealthifiedToShopping(id) {
