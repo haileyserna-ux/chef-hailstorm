@@ -1038,10 +1038,8 @@ function renderWeeklyRecipes(recipes) {
         <div class="recipe-pills">${(r.tags||[]).map((t,ti) => `<span class="pill ${PILL_CLS[ti%PILL_CLS.length]}">${t}</span>`).join('')}</div>
         <div class="recipe-macros">${r.kcal} · ${r.protein} · ${r.time}</div>
         <span class="recipe-view-link">Preview ↗</span>
-        <div class="recipe-btns" style="margin-top:8px; flex-wrap:wrap">
-          <button class="recipe-btn primary" onclick="event.stopPropagation();saveToBook(${i})">Save ↗</button>
-          <button class="recipe-btn" onclick="event.stopPropagation();addWeeklyRecipeToShopping(${i})" title="Add ingredients to shopping list">🛒 Shop</button>
-          <button class="recipe-btn" onclick="event.stopPropagation();toggleRecipeSwap(${i})" id="swap-btn-${i}" title="Swap this recipe">🔄 Swap</button>
+        <div class="recipe-btns" style="margin-top:8px">
+          <button class="recipe-btn" onclick="event.stopPropagation();toggleRecipeSwap(${i})" id="swap-btn-${i}" title="Swap this recipe for a different one">🔄 Swap recipe</button>
         </div>
         <div id="swap-panel-${i}"></div>
       </div>`;
@@ -1055,13 +1053,6 @@ function renderWeeklyRecipes(recipes) {
     document.getElementById('weekly-recipes').appendChild(actionBar);
   }
   document.getElementById('weekly-recipes').appendChild(grid);
-}
-
-function addWeeklyRecipeToShopping(idx) {
-  const r = state.weeklyRecipes[idx];
-  if (!r) return;
-  const added = addRecipeIngredientsToShopping(r);
-  showToast(added ? `Added ${added} ingredient${added===1?'':'s'} to shopping list ✓` : 'All ingredients already in shopping list');
 }
 
 function addAllWeeklyToShopping() {
@@ -1655,17 +1646,7 @@ function addCurrentRecipeToShopping() {
 }
 
 // (Rating UI now lives only on the full recipe page — see openRpRatingForm.)
-
-// ══ SAVE TO BOOK ══
-function saveToBook(idx) {
-  const r = state.weeklyRecipes[idx];
-  if (!r) return;
-  const exists = state.recipes.find(x => x.name === r.name);
-  if (exists) { showToast('Already in your recipe book'); return; }
-  state.recipes.unshift({ ...r, savedOn: new Date().toLocaleDateString(), note: '', id: Date.now() });
-  persist(KEYS.recipes, state.recipes);
-  showToast('Saved to recipe book ✓');
-}
+// (Save-to-book and add-to-shopping per-card actions removed — handled from the full recipe page.)
 
 // ══ RECIPE BOOK ══
 function renderRecipeBook() {
